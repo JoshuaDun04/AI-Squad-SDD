@@ -1,0 +1,161 @@
+{
+  "cenarios": 38,
+  "cenarios_cobertos": 38,
+  "negativos": 19,
+  "negativos_cobertos": 19,
+  "sem_teste": [],
+  "marcadores_orfaos": [],
+  "violacoes_rotas": [],
+  "violacoes_repositorios": [],
+  "mapa": {
+    "BDD-AUT-01": [
+      "test_auth.py::test_cadastro_e_login_do_admin",
+      "test_auth.py::test_email_ja_usado_retorna_409"
+    ],
+    "BDD-AUT-02": [
+      "test_auth.py::test_admin_cria_usuario_cozinha_com_acesso_restrito"
+    ],
+    "BDD-AUT-03": [
+      "test_auth.py::test_senha_incorreta_retorna_401",
+      "test_auth.py::test_usuario_desativado_perde_acesso_na_hora",
+      "test_auth.py::test_token_com_mais_de_8_horas_retorna_401",
+      "test_auth.py::test_token_ausente_ou_malformado_retorna_401",
+      "test_auth.py::test_token_assinado_com_outro_segredo_retorna_401"
+    ],
+    "BDD-CAN-01": [
+      "test_cozinha.py::test_atendente_cancela_com_motivo"
+    ],
+    "BDD-CAN-02": [
+      "test_cozinha.py::test_admin_cancela_pedido_em_preparo"
+    ],
+    "BDD-CAN-03": [
+      "test_cozinha.py::test_cancelamento_sem_motivo_retorna_422",
+      "test_cozinha.py::test_cancelamento_apos_pronto_retorna_409",
+      "test_cozinha.py::test_cancelar_duas_vezes_retorna_409"
+    ],
+    "BDD-CAR-01": [
+      "test_cardapio.py::test_admin_monta_o_cardapio",
+      "test_cardapio.py::test_ordenacao_e_edicao_de_categorias"
+    ],
+    "BDD-CAR-02": [
+      "test_cardapio.py::test_item_desativado_some_do_robo_mas_fica_no_painel",
+      "test_cardapio.py::test_categoria_sem_itens_disponiveis_nao_aparece_no_robo"
+    ],
+    "BDD-CAR-03": [
+      "test_cardapio.py::test_preco_invalido_retorna_422_e_nao_salva",
+      "test_cardapio.py::test_preco_invalido_na_edicao_retorna_422"
+    ],
+    "BDD-CAR-04": [
+      "test_cardapio.py::test_item_que_ficou_indisponivel_sai_do_carrinho_com_aviso",
+      "test_cardapio.py::test_item_indisponivel_no_meio_do_fechamento_volta_ao_carrinho"
+    ],
+    "BDD-COZ-01": [
+      "test_cozinha.py::test_cozinha_prepara_e_cliente_e_avisado",
+      "test_cozinha.py::test_pedido_de_entrega_avisa_saida",
+      "test_cozinha.py::test_pedido_aparece_na_fila_logo_apos_confirmacao"
+    ],
+    "BDD-COZ-02": [
+      "test_cozinha.py::test_finalizado_sai_da_fila_e_fica_no_historico"
+    ],
+    "BDD-COZ-03": [
+      "test_cozinha.py::test_transicao_fora_de_ordem_retorna_409",
+      "test_cozinha.py::test_cancelado_e_status_desconhecido"
+    ],
+    "BDD-COZ-04": [
+      "test_cozinha.py::test_cozinha_nao_cancela_nem_ve_endereco"
+    ],
+    "BDD-HOR-01": [
+      "test_horario.py::test_pedido_confirmado_dentro_do_horario",
+      "test_horario.py::test_horarios_sao_listados_com_estado_atual"
+    ],
+    "BDD-HOR-02": [
+      "test_horario.py::test_dia_fechado_informa_proxima_abertura_sem_menu",
+      "test_horario.py::test_antes_de_abrir_no_mesmo_dia"
+    ],
+    "BDD-HOR-03": [
+      "test_horario.py::test_confirmacao_apos_o_fechamento_nao_cria_pedido",
+      "test_horario.py::test_exatamente_no_horario_de_fechar_ja_esta_fechado",
+      "test_horario.py::test_horario_invalido_retorna_422"
+    ],
+    "BDD-ISO-01": [
+      "test_isolamento.py::test_pedido_de_outro_restaurante_retorna_404_sem_vazar_campos",
+      "test_isolamento.py::test_alterar_pedido_de_outro_restaurante_retorna_404"
+    ],
+    "BDD-ISO-02": [
+      "test_isolamento.py::test_alterar_item_de_outro_restaurante_retorna_404_e_preco_nao_muda",
+      "test_isolamento.py::test_categoria_de_outro_restaurante_inacessivel",
+      "test_isolamento.py::test_listagens_so_trazem_o_proprio_restaurante"
+    ],
+    "BDD-ISO-03": [
+      "test_isolamento.py::test_fila_da_cozinha_nao_mistura_restaurantes",
+      "test_isolamento.py::test_mensagem_de_whatsapp_so_ve_cardapio_do_proprio_restaurante"
+    ],
+    "BDD-LGPD-01": [
+      "test_lgpd_logs.py::test_pedido_de_retirada_guarda_so_o_necessario"
+    ],
+    "BDD-LGPD-02": [
+      "test_lgpd_logs.py::test_logs_nao_contem_telefone_nem_endereco",
+      "test_lgpd_logs.py::test_filtro_mascara_telefone_que_escapar_para_o_log",
+      "test_lgpd_logs.py::test_mascarar_telefone"
+    ],
+    "BDD-PED-01": [
+      "test_pedido.py::test_retirada_com_pix_cria_pedido"
+    ],
+    "BDD-PED-02": [
+      "test_pedido.py::test_entrega_com_dinheiro_e_troco",
+      "test_pedido.py::test_formatos_de_troco_aceitos"
+    ],
+    "BDD-PED-03": [
+      "test_pedido.py::test_numeracao_diaria_reinicia_a_meia_noite_local",
+      "test_pedido.py::test_preco_congelado_apos_mudanca",
+      "test_pedido.py::test_preco_vale_o_do_momento_da_confirmacao"
+    ],
+    "BDD-PED-04": [
+      "test_pedido.py::test_troco_menor_que_total_e_recusado"
+    ],
+    "BDD-PED-05": [
+      "test_pedido.py::test_entrega_sem_endereco_completo"
+    ],
+    "BDD-PED-06": [
+      "test_pedido.py::test_finalizar_quando_carrinho_esvaziou"
+    ],
+    "BDD-ROB-01": [
+      "test_robo.py::test_cliente_navega_e_adiciona_item"
+    ],
+    "BDD-ROB-02": [
+      "test_robo.py::test_remover_item_do_carrinho",
+      "test_robo.py::test_remover_ultimo_item_volta_as_categorias"
+    ],
+    "BDD-ROB-03": [
+      "test_robo.py::test_mesmo_item_duas_vezes_soma_a_quantidade"
+    ],
+    "BDD-ROB-04": [
+      "test_robo.py::test_quantidade_invalida_continua_pedindo",
+      "test_robo.py::test_soma_acima_de_20_por_item_e_recusada"
+    ],
+    "BDD-ROB-05": [
+      "test_robo.py::test_opcao_inexistente_repete_categorias",
+      "test_robo.py::test_opcao_invalida_em_outros_menus"
+    ],
+    "BDD-ROB-06": [
+      "test_robo.py::test_carrinho_expira_apos_30_minutos",
+      "test_robo.py::test_exatamente_30_minutos_ainda_nao_expira"
+    ],
+    "BDD-WA-01": [
+      "test_canal.py::test_admin_conecta_pelo_qr_code",
+      "test_canal.py::test_so_admin_gerencia_conexao"
+    ],
+    "BDD-WA-02": [
+      "test_canal.py::test_sessao_cai_e_admin_gera_novo_qr",
+      "test_canal.py::test_admin_desconecta"
+    ],
+    "BDD-WA-03": [
+      "test_canal.py::test_webhook_sem_token_valido_retorna_401_e_nao_processa",
+      "test_canal.py::test_status_de_conexao_sem_token_retorna_401"
+    ],
+    "BDD-WA-04": [
+      "test_canal.py::test_mensagem_duplicada_nao_gera_resposta_nem_altera_carrinho"
+    ]
+  },
+  "status": "PASSED"
+}

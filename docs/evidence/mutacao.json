@@ -1,0 +1,34 @@
+{
+  "canal": {
+    "killed": 11,
+    "score": 100.0
+  },
+  "dinheiro": {
+    "killed": 67,
+    "score": 100.0
+  },
+  "horario": {
+    "killed": 52,
+    "survived": 2,
+    "score": 96.3
+  },
+  "lgpd": {
+    "killed": 40,
+    "survived": 2,
+    "score": 95.2
+  },
+  "robo": {
+    "killed": 763,
+    "survived": 14,
+    "score": 98.2
+  },
+  "status": {
+    "killed": 11,
+    "score": 100.0
+  },
+  "total": {
+    "killed": 944,
+    "survived": 18,
+    "score": 98.1
+  }
+}

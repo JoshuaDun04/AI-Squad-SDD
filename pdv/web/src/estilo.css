@@ -1,0 +1,773 @@
+/*
+  PDV Restaurantes — painel
+  Paleta: floresta (verde-escuro da mata), névoa do rio, tucupi (amarelo, pedido novo),
+  açaí (em preparo), jambu (pronto). Uma família só: Archivo, com o eixo de largura
+  condensado para os números da cozinha, que precisam ser lidos de longe.
+*/
+:root {
+  --floresta: #173326;
+  --floresta-2: #22473a;
+  --nevoa: #e9eee8;
+  --papel: #ffffff;
+  --tinta: #18211c;
+  --tinta-suave: #4d5a52;
+  --linha: #c9d3cb;
+  --tucupi: #e2b019;
+  --acai: #5a2449;
+  --jambu: #4e7d2e;
+  --alerta: #b3261e;
+  --foco: #1b6fd1;
+  --raio: 6px;
+  --fonte: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--nevoa);
+  color: var(--tinta);
+  font-family: var(--fonte);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+  margin: 0;
+}
+h1 {
+  font-size: 1.75rem;
+  font-weight: 750;
+  font-stretch: 88%;
+}
+h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input:not([type]) {
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 0.55rem 0.7rem;
+  background: var(--papel);
+  color: var(--tinta);
+  min-width: 0;
+}
+input[aria-invalid="true"] {
+  border-color: var(--alerta);
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--floresta);
+  background: var(--papel);
+  color: var(--floresta);
+  border-radius: var(--raio);
+  padding: 0.55rem 1rem;
+  font-weight: 650;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.primario {
+  background: var(--floresta);
+  color: #fff;
+}
+button.perigo {
+  border-color: var(--alerta);
+  color: var(--alerta);
+}
+button.link {
+  border: 0;
+  background: none;
+  padding: 0.2rem 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+button.icone {
+  padding: 0.25rem 0.6rem;
+  font-weight: 700;
+}
+
+label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+label small {
+  font-weight: 400;
+  color: var(--tinta-suave);
+}
+label.alternar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+.campo-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.erro {
+  color: var(--alerta);
+  background: #fbeceb;
+  border-left: 4px solid var(--alerta);
+  padding: 0.6rem 0.8rem;
+  margin: 0 0 1rem;
+}
+.erro-campo {
+  color: var(--alerta);
+  font-size: 0.85rem;
+}
+.vazio,
+.ajuda {
+  color: var(--tinta-suave);
+  max-width: 70ch;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- casca */
+
+.casca {
+  min-height: 100vh;
+}
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--floresta);
+  color: #fff;
+  flex-wrap: wrap;
+}
+.marca {
+  display: grid;
+  line-height: 1.2;
+  margin-right: auto;
+}
+.marca-nome {
+  font-weight: 800;
+  font-stretch: 80%;
+  font-size: 1.25rem;
+}
+.marca-papel {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.barra nav {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.barra nav a {
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--raio);
+  font-weight: 600;
+  opacity: 0.85;
+}
+.barra nav a:hover {
+  opacity: 1;
+  background: var(--floresta-2);
+}
+.barra nav a[aria-current="page"] {
+  opacity: 1;
+  background: var(--papel);
+  color: var(--floresta);
+}
+.barra .sair {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.conteudo {
+  padding: 1.5rem 1.25rem 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.pagina-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* ------------------------------------------------------------- entrada */
+
+.entrada {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 440px);
+}
+.entrada-lado {
+  background: var(--floresta);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem;
+  gap: 2.5rem;
+}
+.entrada-ticket {
+  background: var(--papel);
+  color: var(--tinta);
+  width: min(320px, 100%);
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-top: 10px solid var(--tucupi);
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  transform: rotate(-2deg);
+  font-size: 1.05rem;
+}
+.entrada-num {
+  font-size: 4.5rem;
+  font-weight: 800;
+  font-stretch: 62%;
+  line-height: 1;
+}
+.entrada-legenda {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-stretch: 85%;
+  width: min(320px, 100%);
+  margin: 0;
+}
+.entrada-form {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+  padding: 2.5rem;
+  background: var(--papel);
+}
+
+/* ------------------------------------------------------------- cozinha */
+
+.casca-cozinha {
+  background: var(--floresta);
+}
+.casca-cozinha .conteudo {
+  max-width: none;
+  color: #fff;
+}
+.cozinha-topo {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.estado {
+  margin: 0;
+  opacity: 0.8;
+}
+.estado.offline {
+  opacity: 1;
+  color: var(--tucupi);
+  font-weight: 700;
+}
+.cozinha .erro {
+  max-width: 60ch;
+}
+.colunas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.coluna h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.1rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 4px solid var(--cor-coluna);
+}
+.coluna[data-status="Recebido"] {
+  --cor-coluna: var(--tucupi);
+}
+.coluna[data-status="Em preparo"] {
+  --cor-coluna: #c58bb3;
+}
+.coluna[data-status="Pronto"] {
+  --cor-coluna: #9cc77b;
+}
+.contagem {
+  font-stretch: 70%;
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+.coluna .vazio {
+  color: #fff;
+  opacity: 0.6;
+}
+.tickets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+.ticket {
+  background: var(--papel);
+  color: var(--tinta);
+  border-top: 8px solid var(--cor-coluna);
+  padding: 0.75rem 1rem 1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.ticket-cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.ticket-num {
+  font-size: 3.4rem;
+  line-height: 0.9;
+  font-weight: 800;
+  font-stretch: 62%;
+  font-variant-numeric: tabular-nums;
+}
+.ticket-tempo {
+  display: grid;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
+}
+.ticket-tempo strong {
+  font-size: 1.15rem;
+  color: var(--tinta);
+  font-variant-numeric: tabular-nums;
+}
+.ticket.atencao .ticket-tempo strong {
+  background: var(--tucupi);
+  padding: 0 0.35rem;
+}
+.ticket.atrasado .ticket-tempo strong {
+  background: var(--alerta);
+  color: #fff;
+  padding: 0 0.35rem;
+}
+.ticket-tipo {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--tinta-suave);
+}
+.ticket-itens {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+.ticket-itens b {
+  font-stretch: 75%;
+  font-size: 1.3rem;
+  margin-right: 0.15rem;
+}
+.ticket-acao {
+  margin-top: 0.4rem;
+  background: var(--floresta);
+  color: #fff;
+  padding: 0.8rem;
+  font-size: 1.05rem;
+}
+
+/* ------------------------------------------------------------- tabelas e pedidos */
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--papel);
+}
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--linha);
+}
+.tabela thead th {
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
+  font-weight: 600;
+}
+.tabela tbody tr {
+  cursor: default;
+}
+.pedidos .tabela tbody tr {
+  cursor: pointer;
+}
+.tabela tbody tr.selecionado {
+  background: #f3f6f2;
+  box-shadow: inset 4px 0 0 var(--floresta);
+}
+.tabela.compacta td,
+.tabela.compacta th {
+  padding: 0.4rem 0;
+}
+.tabela tr.inativo td {
+  color: var(--tinta-suave);
+}
+.selo {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  background: var(--nevoa);
+}
+.selo[data-status="Recebido"] {
+  background: #f7e7b4;
+}
+.selo[data-status="Em preparo"] {
+  background: #ecd9e6;
+  color: var(--acai);
+}
+.selo[data-status="Pronto"] {
+  background: #dcebd0;
+  color: #2f5418;
+}
+.selo[data-status="Cancelado"] {
+  background: #f5d6d4;
+  color: var(--alerta);
+}
+.pedidos-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 1.25rem;
+  align-items: start;
+}
+.pedidos-grade:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+.detalhe {
+  background: var(--papel);
+  padding: 1rem 1.25rem 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  border-top: 6px solid var(--floresta);
+  position: sticky;
+  top: 1rem;
+}
+.detalhe-cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.detalhe dl {
+  margin: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+.detalhe dt {
+  font-size: 0.85rem;
+  color: var(--tinta-suave);
+  margin-top: 0.4rem;
+}
+.detalhe dd {
+  margin: 0;
+}
+.cancelar {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--linha);
+}
+
+/* ------------------------------------------------------------- cardápio */
+
+.categoria {
+  background: var(--papel);
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+}
+.categoria.inativa {
+  opacity: 0.65;
+}
+.categoria-cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--tinta);
+}
+.categoria-pos {
+  font-stretch: 65%;
+  font-weight: 800;
+  color: var(--tinta-suave);
+  margin-right: 0.25rem;
+}
+.acoes {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--linha);
+}
+.item-nome small {
+  display: block;
+  color: var(--tinta-suave);
+}
+.item-preco {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+.item.indisponivel .item-nome,
+.item.indisponivel .item-preco {
+  color: var(--tinta-suave);
+  text-decoration: line-through;
+}
+.item.editando form,
+.novo-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 0.7fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+.novo-item {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 0.7fr) auto;
+  margin-top: 0.75rem;
+}
+.nova-categoria {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* ------------------------------------------------------------- horários, whatsapp, equipe */
+
+.horarios-tabela {
+  max-width: 560px;
+}
+.horarios-tabela tr.fechado .fechado-texto {
+  color: var(--tinta-suave);
+}
+.faixa {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.rodape-form {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.estado-whatsapp {
+  font-weight: 700;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #f5d6d4;
+  color: var(--alerta);
+}
+.estado-whatsapp[data-status="aguardando_qr"] {
+  background: #f7e7b4;
+  color: #5a4304;
+}
+.estado-whatsapp[data-status="conectado"] {
+  background: #dcebd0;
+  color: #2f5418;
+}
+.passos {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  max-width: 60ch;
+}
+.qr-bloco {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.qr-bloco img {
+  background: #fff;
+  padding: 0.75rem;
+  border: 1px solid var(--linha);
+}
+.qr-espera {
+  width: 280px;
+  height: 280px;
+  display: grid;
+  place-items: center;
+  background: var(--papel);
+}
+.instrucoes {
+  max-width: 40ch;
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+}
+.aviso-risco {
+  margin-top: 2.5rem;
+  max-width: 70ch;
+  font-size: 0.9rem;
+  color: var(--tinta-suave);
+}
+.novo-usuario {
+  margin-top: 2rem;
+  display: grid;
+  gap: 0.9rem;
+  max-width: 480px;
+  background: var(--papel);
+  padding: 1.25rem;
+}
+.novo-usuario fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.novo-usuario legend {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.opcao {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-weight: 400;
+}
+.opcao span {
+  color: var(--tinta-suave);
+}
+
+/* ------------------------------------------------------------- telas pequenas */
+
+@media (max-width: 900px) {
+  .colunas {
+    grid-template-columns: 1fr;
+  }
+  .pedidos-grade {
+    grid-template-columns: 1fr;
+  }
+  .detalhe {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .entrada {
+    grid-template-columns: 1fr;
+  }
+  .entrada-lado {
+    padding: 1.5rem;
+    flex-direction: row;
+    align-items: center;
+  }
+  .entrada-ticket {
+    width: 150px;
+    font-size: 0.8rem;
+  }
+  .entrada-num {
+    font-size: 2.5rem;
+  }
+  .entrada-legenda {
+    font-size: 1.15rem;
+  }
+  .entrada-form {
+    padding: 1.5rem 16px;
+  }
+  .barra {
+    gap: 0.5rem;
+    padding: 0.6rem 16px;
+  }
+  .barra nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .barra nav a {
+    white-space: nowrap;
+  }
+  .conteudo {
+    padding: 1rem 16px 2rem;
+  }
+  .item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .item.editando form,
+  .novo-item {
+    grid-template-columns: 1fr;
+  }
+  .nova-categoria {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tabela th,
+  .tabela td {
+    padding: 0.5rem 0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ajustes de especificidade */
+.tabela .num {
+  text-align: right;
+}
+.detalhe .selo {
+  justify-self: start;
+}
