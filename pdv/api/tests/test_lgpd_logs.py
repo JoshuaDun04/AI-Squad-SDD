@@ -65,3 +65,32 @@ def test_mascarar_telefone(entrada, saida):
 def test_mascarar_texto_preserva_datas_e_ids():
     texto = "pedido 2026-10-06 numero 12 uuid 99ba63af-fdc7 tel 5592991234567"
     assert mascarar_texto(texto) == "pedido 2026-10-06 numero 12 uuid 99ba63af-fdc7 tel *****-4567"
+
+
+@pytest.mark.bdd("BDD-LGPD-02")
+def test_erro_interno_nao_vaza_dados_no_log(sabor, caplog, monkeypatch):
+    """Qualquer exceção não tratada vira 500 só com o tipo do erro no log."""
+    from pdv_api.repositorios import RepoConversas
+
+    def explode(self, telefone, nome):
+        raise RuntimeError(f"falha com {telefone} e {nome}")
+
+    monkeypatch.setattr(RepoConversas, "cliente", explode)
+    caplog.set_level(logging.DEBUG)
+    from tests.conftest import GATEWAY_TOKEN
+
+    r = sabor.client.post(
+        "/canal/webhook",
+        json={
+            "tipo": "mensagem",
+            "restaurante_id": sabor.id,
+            "mensagem_id": "x1",
+            "telefone": "5592977776666",
+            "nome_perfil": "Fulano Secreto",
+            "texto": "oi",
+        },
+        headers={"X-Gateway-Token": GATEWAY_TOKEN},
+    )
+    assert r.status_code == 500 and r.json() == {"erro": "interno", "detalhe": "erro interno"}
+    assert "5592977776666" not in caplog.text and "Fulano Secreto" not in caplog.text
+    assert "erro interno RuntimeError em POST /canal/webhook" in caplog.text

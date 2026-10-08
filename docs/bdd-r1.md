@@ -197,6 +197,14 @@ Cenário: Rejeição de carrinho expirado por inatividade
   Quando o cliente envia "3" (finalizar) às 12:31
   Então nenhum pedido é criado
   E o robô avisa que o carrinho expirou e mostra as categorias do início
+
+@BDD-ROB-07 @negative @RF-07 @RN-04
+Cenário: Rejeição de escolha feita num menu que mudou
+  Dado o robô mostrando "1 - Tambaqui assado, 2 - Pirarucu de casaca"
+  Quando o admin desativa o Tambaqui assado
+  E o cliente envia "1"
+  Então o robô avisa que o cardápio mudou e mostra os itens atualizados
+  E não pergunta a quantidade de outro item
 ```
 
 ## Robô: fechamento e pedido (RF-08 · RN-02, RN-03, RN-07, RN-08 · RT-08)
@@ -244,6 +252,16 @@ Cenário: Rejeição de confirmação com carrinho vazio
   Dado um carrinho sem itens
   Quando o cliente escolhe "Finalizar pedido"
   Então o robô informa que o carrinho está vazio e volta às categorias
+
+@BDD-PED-07 @negative @RF-08 @RN-03
+Cenário: Rejeição de confirmação com total diferente do resumo mostrado
+  Dado o resumo do pedido mostrando "Total: R$ 91,80"
+  Quando o admin muda o preço do Tambaqui assado
+  E o cliente envia "1" para confirmar
+  Então nenhum pedido é criado
+  E o robô avisa que os preços mudaram e mostra o resumo com o novo total
+  Quando o cliente confirma de novo
+  Então o pedido é criado com o novo total
 ```
 
 ## Observação do pedido (RF-08 · RN-11 · DEC-07)

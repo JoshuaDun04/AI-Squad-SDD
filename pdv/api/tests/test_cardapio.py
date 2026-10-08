@@ -122,3 +122,12 @@ def test_campos_desconhecidos_sao_recusados(sabor):
 def test_item_inexistente_retorna_404(sabor):
     r = sabor.client.patch("/itens/00000000-0000-0000-0000-000000000000", json={"nome": "X"}, headers=sabor.h())
     assert r.status_code == 404
+
+
+@pytest.mark.bdd("BDD-CAR-02")
+def test_categoria_desativada_some_do_robo(sabor, canal):
+    """REV-15: categoria com ativa=False não aparece, mesmo com itens disponíveis."""
+    sabor.client.patch(f"/categorias/{sabor.categorias['Bebidas']}", json={"ativa": False}, headers=sabor.h())
+    sabor.msg("5592911112222", "oi")
+    menu = canal.para("5592911112222")[-1]
+    assert "Bebidas" not in menu and "1 - Peixes\n2 - Sobremesas" in menu

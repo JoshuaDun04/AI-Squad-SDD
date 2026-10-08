@@ -15,6 +15,7 @@ from pdv_api.erros import ErroApi, nao_autenticado
 from pdv_api.relogio import Relogio
 from pdv_api.repositorios import RepoAutenticacao, RepoRestaurantes, RepoUsuarios, limite_janela
 from pdv_api.seguranca import Principal, emitir_token, hash_senha, verificar_senha
+from pdv_api.servicos.comum import agora_local
 
 router = APIRouter(tags=["autenticação"])
 
@@ -64,21 +65,29 @@ def login(
     agora = relogio.agora()
     email = dados.email.strip().lower()
     ip = request.client.host if request.client else "?"
+    # Limite por e-mail+IP (força bruta numa conta) e por IP (varredura de várias contas).
+    # Por IP real do cliente: quem erra a senha de outro endereço não bloqueia o dono (REV-07).
     chave = f"{email}|{ip}"
+    chave_ip = f"ip|{ip}"
     auth = RepoAutenticacao(sessao)
-    if auth.falhas_recentes(chave, limite_janela(agora, config.login_janela_min)) >= config.login_max_tentativas:
+    desde = limite_janela(agora, config.login_janela_min)
+    if (
+        auth.falhas_recentes(chave, desde) >= config.login_max_tentativas
+        or auth.falhas_recentes(chave_ip, desde) >= config.login_max_tentativas_ip
+    ):
         raise ErroApi(429, "muitas_tentativas", "muitas tentativas; aguarde alguns minutos")
 
     usuario = auth.usuario_por_email(email)
     senha_ok = verificar_senha(usuario.senha_hash if usuario else None, dados.senha)
     if usuario is None or not senha_ok or not usuario.ativo:
         auth.registrar_falha(chave, agora)
+        auth.registrar_falha(chave_ip, agora)
         sessao.commit()
         raise nao_autenticado()
 
     auth.limpar_falhas(chave, antes_de=limite_janela(agora, config.login_janela_min))
     sessao.commit()
-    principal = Principal(usuario.id, usuario.restaurante_id, usuario.papel)
+    principal = Principal(usuario.id, usuario.restaurante_id, usuario.papel, usuario.sessao_versao)
     return {
         "token": emitir_token(principal, agora, config.jwt_secret),
         "papel": usuario.papel,
@@ -87,7 +96,11 @@ def login(
 
 
 @router.get("/auth/eu")
-def eu(principal: Principal = Depends(usuario_atual), sessao: Session = Depends(obter_sessao)) -> dict:
+def eu(
+    principal: Principal = Depends(usuario_atual),
+    sessao: Session = Depends(obter_sessao),
+    relogio: Relogio = Depends(obter_relogio),
+) -> dict:
     restaurante = RepoRestaurantes(sessao).obter(principal.restaurante_id)
     usuario = RepoUsuarios(sessao, principal.restaurante_id).obter(principal.usuario_id)
     return {
@@ -97,6 +110,8 @@ def eu(principal: Principal = Depends(usuario_atual), sessao: Session = Depends(
         "restaurante_id": str(principal.restaurante_id),
         "restaurante_nome": restaurante.nome if restaurante else "",
         "fuso": restaurante.fuso if restaurante else "",
+        # "hoje" no fuso do restaurante, para o painel não depender do relógio do navegador (REV-16)
+        "hoje": agora_local(restaurante, relogio.agora()).date().isoformat() if restaurante else "",
     }
 
 

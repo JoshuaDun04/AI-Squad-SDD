@@ -63,11 +63,17 @@ def alterar(
         raise nao_encontrado("usuário")
     if u.id == p.usuario_id and (dados.ativo is False or (dados.papel and dados.papel != "admin")):
         raise ErroApi(422, "auto_bloqueio", "o admin não pode desativar nem rebaixar a si mesmo")
+    mudou_acesso = False
     if dados.senha is not None:
         u.senha_hash = hash_senha(dados.senha)
-    if dados.papel is not None:
+        mudou_acesso = True
+    if dados.papel is not None and dados.papel != u.papel:
         u.papel = dados.papel
-    if dados.ativo is not None:
+        mudou_acesso = True
+    if dados.ativo is not None and dados.ativo != u.ativo:
         u.ativo = dados.ativo
+        mudou_acesso = True
+    if mudou_acesso:
+        u.sessao_versao += 1  # tokens já emitidos deixam de valer (REV-13)
     sessao.commit()
     return _saida(u)

@@ -53,7 +53,10 @@ def usuario_atual(
     # usuário desativado ou trocado de restaurante perde o acesso na hora (BDD-AUT-03)
     if usuario is None or not usuario.ativo or usuario.restaurante_id != principal.restaurante_id:
         raise nao_autenticado("usuário inativo")
-    return Principal(usuario.id, usuario.restaurante_id, usuario.papel)
+    # Troca de senha ou de papel invalida tokens antigos (REV-13)
+    if usuario.sessao_versao != principal.versao:
+        raise nao_autenticado("sessão encerrada; entre de novo")
+    return Principal(usuario.id, usuario.restaurante_id, usuario.papel, usuario.sessao_versao)
 
 
 def exigir(*papeis: str) -> Callable[..., Principal]:

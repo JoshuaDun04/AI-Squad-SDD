@@ -6,6 +6,8 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Erros do banco sem DETAIL nem SQL no log: chaves duplicadas trariam telefone (RN-10)
+    command: ["postgres", "-c", "log_error_verbosity=terse", "-c", "log_min_error_statement=panic"]
     environment:
       POSTGRES_DB: pdv
       POSTGRES_USER: pdv

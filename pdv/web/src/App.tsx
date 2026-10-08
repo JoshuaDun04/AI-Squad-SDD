@@ -77,7 +77,17 @@ export default function App() {
 
   useEffect(() => {
     if (!sessao) return;
-    api<Eu>("/auth/eu").then(setEu).catch(() => {});
+    api<Eu>("/auth/eu")
+      .then((dados) => {
+        setEu(dados);
+        // O papel pode ter mudado desde o login: a interface segue o que a API diz agora
+        if (dados.papel !== sessao.papel) {
+          const atualizada = { ...sessao, papel: dados.papel };
+          salvarSessao(atualizada);
+          setSessao(atualizada);
+        }
+      })
+      .catch(() => {});
   }, [sessao, api]);
 
   const ctx = useMemo(() => (sessao ? { sessao, eu, api } : null), [sessao, eu, api]);

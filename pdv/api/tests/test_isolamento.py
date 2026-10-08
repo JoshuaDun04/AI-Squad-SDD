@@ -59,8 +59,9 @@ def test_categoria_de_outro_restaurante_inacessivel(sabor, tacaca):
 def test_listagens_so_trazem_o_proprio_restaurante(sabor, tacaca):
     nomes_a = {i["nome"] for i in sabor.client.get("/itens", headers=sabor.h()).json()}
     assert "Tacacá grande" not in nomes_a
-    usuarios_a = sabor.client.get("/usuarios", headers=sabor.h()).json()
-    assert all("tacaca" not in u["email"] for u in usuarios_a)
+    ids_a = {u["id"] for u in sabor.client.get("/usuarios", headers=sabor.h()).json()}
+    ids_b = {u["id"] for u in tacaca.client.get("/usuarios", headers=tacaca.h()).json()}
+    assert ids_a and ids_b and not ids_a & ids_b
 
 
 @pytest.mark.bdd("BDD-ISO-03")

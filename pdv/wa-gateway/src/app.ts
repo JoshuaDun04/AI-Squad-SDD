@@ -89,7 +89,11 @@ export function criarApp(sessoes: Sessoes, token: string): express.Express {
   });
 
   // Erros não tratados: resposta genérica, sem vazar corpo (telefone/texto) para o log
-  app.use((erro: Error, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((erro: Error & { type?: string; status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+    if (erro.type === "entity.parse.failed" || erro.type === "entity.too.large") {
+      res.status(erro.status ?? 400).json({ erro: "corpo_invalido" }); // REV-12
+      return;
+    }
     console.error(`erro interno: ${erro.name}`);
     res.status(500).json({ erro: "interno" });
   });

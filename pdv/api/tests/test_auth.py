@@ -26,6 +26,7 @@ def test_cadastro_e_login_do_admin(client, fabrica, relogio):
 
     eu = client.get("/auth/eu", headers={"Authorization": f"Bearer {corpo['token']}"}).json()
     assert eu["restaurante_nome"] == "Sabor do Rio"
+    assert eu["hoje"] == "2026-10-06"  # dia local do restaurante
 
     # senha nunca em texto puro
     from pdv_api.repositorios import RepoAutenticacao
@@ -139,3 +140,44 @@ def test_usuarios_validacao_e_listagem(sabor):
     assert r.status_code == 422
     papeis = sorted(u["papel"] for u in sabor.client.get("/usuarios", headers=sabor.h()).json())
     assert papeis == ["admin", "atendente", "cozinha"]
+
+
+def test_troca_de_senha_ou_papel_invalida_tokens_antigos(sabor):
+    """REV-13: token emitido antes da troca deixa de valer na hora."""
+    uid = sabor.criar_usuario("atendente", email="atendente@sabor.com")
+    antigo = sabor.h("atendente")
+    r = sabor.client.patch(f"/usuarios/{uid}", json={"senha": "Nova#Senha2026"}, headers=sabor.h())
+    assert r.status_code == 200
+    r = sabor.client.get("/fila", headers=antigo)
+    assert r.status_code == 401 and r.json()["detalhe"] == "sessão encerrada; entre de novo"
+    novo = sabor.client.post("/auth/login", json={"email": "atendente@sabor.com", "senha": "Nova#Senha2026"}).json()
+    h = {"Authorization": f"Bearer {novo['token']}"}
+    assert sabor.client.get("/fila", headers=h).status_code == 200
+    sabor.client.patch(f"/usuarios/{uid}", json={"papel": "cozinha"}, headers=sabor.h())
+    assert sabor.client.get("/fila", headers=h).status_code == 401
+
+
+def test_patch_sem_mudanca_de_acesso_nao_derruba_sessao(sabor):
+    uid = sabor.criar_usuario("cozinha", email="coz@sabor.com")
+    h = sabor.h("cozinha")
+    sabor.client.patch(f"/usuarios/{uid}", json={"papel": "cozinha", "ativo": True}, headers=sabor.h())
+    assert sabor.client.get("/fila", headers=h).status_code == 200
+
+
+def test_erro_de_senha_de_terceiro_nao_bloqueia_o_dono(client):
+    """REV-07: o limite é por e-mail+IP real; quem erra de outro IP não tranca o dono."""
+    from fastapi.testclient import TestClient
+
+    client.post("/restaurantes", json={"nome": "Sabor do Rio", "admin_email": "dono@sabor.com", "admin_senha": "Forte#2026"})
+    atacante = TestClient(client.app, client=("203.0.113.9", 50000))
+    dono = TestClient(client.app, client=("198.51.100.7", 50000))
+    for _ in range(5):
+        assert atacante.post("/auth/login", json={"email": "dono@sabor.com", "senha": "errada!!"}).status_code == 401
+    assert atacante.post("/auth/login", json={"email": "dono@sabor.com", "senha": "Forte#2026"}).status_code == 429
+    assert dono.post("/auth/login", json={"email": "dono@sabor.com", "senha": "Forte#2026"}).status_code == 200
+
+
+def test_limite_por_ip_entre_varias_contas(client):
+    for i in range(30):
+        client.post("/auth/login", json={"email": f"x{i}@x.com", "senha": "errada!!"})
+    assert client.post("/auth/login", json={"email": "outro@x.com", "senha": "errada!!"}).status_code == 429

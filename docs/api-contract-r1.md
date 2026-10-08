@@ -10,14 +10,14 @@
 | Método e rota | Papéis | Corpo / retorno | Erros | Requisitos |
 |---|---|---|---|---|
 | `POST /restaurantes` | público | `{nome, admin_email, admin_senha (≥8), fuso?}` → `201 {restaurante_id}` | 409 e-mail já usado, 422 (fuso inválido etc.) | RF-01 |
-| `POST /auth/login` | público | `{email, senha}` → `200 {token, papel, restaurante_id}` | 401; ★ 429 após 5 falhas em 15 min (por e-mail+IP, persistido) | RF-02, RT-02 |
-| ★ `GET /auth/eu` | todos | `{usuario_id, email, papel, restaurante_id, restaurante_nome, fuso}` | 401 | RF-02 |
-| `GET/POST /usuarios` · `PATCH /usuarios/{id}` | admin | `{email, senha, papel}` · `{senha?, papel?, ativo?}` | 403, 404, 409, 422 (★ admin não desativa nem rebaixa a si mesmo) | RF-03 |
+| `POST /auth/login` | público | `{email, senha}` → `200 {token, papel, restaurante_id}` | 401; ★ 429 após 5 falhas em 15 min por e-mail+IP, ou 30 por IP (persistido; IP real vindo do nginx) | RF-02, RT-02 |
+| ★ `GET /auth/eu` | todos | `{usuario_id, email, papel, restaurante_id, restaurante_nome, fuso, hoje}` (`hoje` = data no fuso do restaurante) | 401 | RF-02 |
+| `GET/POST /usuarios` · `PATCH /usuarios/{id}` | admin | `{email, senha, papel}` · `{senha?, papel?, ativo?}`; ★ mudar senha, papel ou ativo invalida os tokens já emitidos desse usuário | 403, 404, 409, 422 (★ admin não desativa nem rebaixa a si mesmo) | RF-03 |
 | `GET/POST /categorias` · `PATCH/DELETE /categorias/{id}` | admin (GET: todos) | `{nome, ordem, ativa}` | 403, 404, ★ 409 categoria com itens, 422 | RF-04 |
 | `GET/POST /itens` · `PATCH /itens/{id}` | admin (GET: todos) | `{categoria_id, nome, descricao, preco_centavos>0, disponivel, ordem}`; `GET ?categoria_id=` | 403, 404, 422 (preço não inteiro, ≤ 0, categoria de outro restaurante) | RF-04, RN-02, RN-04 |
 | `GET/PUT /horarios` | admin (GET: todos) | PUT: `[{dia_semana 0-6, abre "HH:MM", fecha "HH:MM"}]`; GET: `{fuso, aberto_agora, proxima_abertura, faixas}` | 422 fecha ≤ abre, ★ dia repetido | RF-05, RN-07 |
-| `POST /whatsapp/conectar` | admin | `202 {status:"aguardando_qr"}` | 403, ★ 503 gateway indisponível | RF-06 |
-| ★ `POST /whatsapp/desconectar` | admin | `200 {status:"desconectado"}` | 403 | RF-06 |
+| `POST /whatsapp/conectar` | admin | `202 {status:"aguardando_qr"}`; se já conectado, `202 {status:"conectado"}` sem mexer na sessão | 403, ★ 503 gateway indisponível | RF-06 |
+| ★ `POST /whatsapp/desconectar` | admin | `200 {status:"desconectado"}` | 403, 503 gateway indisponível (o status não muda) | RF-06 |
 | `GET /whatsapp/status` | admin | `{status, qr_code_data_url?, atualizado_em?}` | 403 | RF-06 |
 | `GET /fila` | cozinha, atendente, admin | `[{pedido_id, numero, status, criado_em, tipo, observacao, itens:[{nome, quantidade}]}]` em ordem de `criado_em`; sem endereço nem telefone | 403 | RF-09, RT-05 |
 | ★ `GET /pedidos?data=AAAA-MM-DD` | atendente, admin | pedidos do dia local (padrão: hoje no fuso do restaurante), com `total_centavos` e `pagamento` | 403 | RF-09 (histórico, BDD-COZ-02) |
@@ -47,6 +47,7 @@
 `telefone`: 8 a 15 dígitos (número, ou identificador LID quando o WhatsApp não informa o número).
 Outros `tipo`: `"status_conexao"` com `{restaurante_id, status: "aguardando_qr"|"conectado"|"desconectado", qr_code?}` (`qr_code` é um data URL PNG).
 Resposta `200 {"ok": true}` após persistir; mensagem duplicada (`mensagem_id` já visto) → `200` sem efeito (BDD-WA-04); restaurante inexistente → 404.
+Mensagens do mesmo cliente são processadas uma de cada vez (trava da conversa). Erro inesperado → `500 {"erro":"interno"}`, registrado só com o tipo da exceção.
 
 ## 3. API → Gateway
 
@@ -54,7 +55,7 @@ Resposta `200 {"ok": true}` após persistir; mensagem duplicada (`mensagem_id` j
 |---|---|---|---|
 | `POST /sessoes/{restaurante_id}` | — | iniciar sessão e gerar QR (RF-06) | 202; 400 id inválido |
 | `DELETE /sessoes/{restaurante_id}` | — | desconectar e apagar credenciais | 200 |
-| `POST /mensagens` | `{restaurante_id, telefone, texto (≤4096)}` | resposta do robô e avisos de status (RF-07, RF-10, RF-11) | 200; 400 corpo inválido; 409 sessão não conectada |
+| `POST /mensagens` | `{restaurante_id, telefone, texto (≤4096)}` | resposta do robô e avisos de status (RF-07, RF-10, RF-11) | 200; 400 corpo inválido ou JSON malformado; 413 corpo > 32 kB; 409 sessão não conectada |
 | `GET /saude` | — | verificação de vida (sem token) | 200 |
 
 Header `X-Gateway-Token` nas duas direções, comparado em tempo constante. O gateway não guarda pedidos nem cardápio.
@@ -72,6 +73,6 @@ Implementações: `GatewayBaileys` (HTTP para `wa-gateway`) e `CanalEmMemoria` (
 
 ## 5. Modelo de dados (resumo)
 
-`restaurante(id, nome, fuso)` · `usuario(id, restaurante_id, email, senha_hash, papel, ativo)` · ★ `tentativa_login(id, chave, momento)` · `categoria(id, restaurante_id, nome, ordem, ativa)` · `item(id, restaurante_id, categoria_id, nome, descricao, preco_centavos, disponivel, ordem)` · `horario(restaurante_id, dia_semana, abre, fecha)` · `conexao_whatsapp(restaurante_id, status, ★ qr_code, atualizado_em)` · `cliente(id, restaurante_id, telefone, nome_perfil)` · `conversa(id, restaurante_id, cliente_id, estado, carrinho_json, dados_json, ultima_msg_em)` · `mensagem_processada(restaurante_id, mensagem_id)` · `pedido(id, restaurante_id, cliente_id, numero, data_local, status, tipo, endereco?, pagamento, troco_para_centavos?, total_centavos, motivo_cancelamento?, observacao? (≤140, migração 0002), criado_em)` · `pedido_item(id, pedido_id, item_id, nome, preco_unitario_centavos, quantidade)`
+`restaurante(id, nome, fuso)` · `usuario(id, restaurante_id, email, senha_hash, papel, ativo, ★ sessao_versao)` · ★ `contador_pedido(restaurante_id, data_local, ultimo)` · ★ `tentativa_login(id, chave, momento)` · `categoria(id, restaurante_id, nome, ordem, ativa)` · `item(id, restaurante_id, categoria_id, nome, descricao, preco_centavos, disponivel, ordem)` · `horario(restaurante_id, dia_semana, abre, fecha)` · `conexao_whatsapp(restaurante_id, status, ★ qr_code, atualizado_em)` · `cliente(id, restaurante_id, telefone, nome_perfil)` · `conversa(id, restaurante_id, cliente_id, estado, carrinho_json, dados_json, ultima_msg_em)` · `mensagem_processada(restaurante_id, mensagem_id)` · `pedido(id, restaurante_id, cliente_id, numero, data_local, status, tipo, endereco?, pagamento, troco_para_centavos?, total_centavos, motivo_cancelamento?, observacao? (≤140, migração 0002), criado_em)` · `pedido_item(id, pedido_id, item_id, nome, preco_unitario_centavos, quantidade)`
 
-Únicos: `usuario.email` global; `(restaurante_id, data_local, numero)` em pedido; `(restaurante_id, mensagem_id)`; `(restaurante_id, telefone)` em cliente; `(restaurante_id, cliente_id)` em conversa. Esquema criado pela migração Alembic `0001` (ADR-0006).
+Únicos: `usuario.email` global; `(restaurante_id, data_local, numero)` em pedido; `(restaurante_id, mensagem_id)`; `(restaurante_id, telefone)` em cliente; `(restaurante_id, cliente_id)` em conversa. Esquema criado pelas migrações Alembic `0001` a `0003` (ADR-0006).

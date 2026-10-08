@@ -16,6 +16,7 @@ export interface Eu {
   restaurante_id: string;
   restaurante_nome: string;
   fuso: string;
+  hoje: string;
 }
 
 export interface Categoria {

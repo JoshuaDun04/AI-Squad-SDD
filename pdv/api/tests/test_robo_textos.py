@@ -121,7 +121,7 @@ def test_retirada_depois_de_entrega_apaga_endereco():
 
 def test_quantidade_limpa_item_pendente():
     res = rodar("oi", "1", "1", "2")
-    assert res.conversa.dados == {"categoria_id": "c1"}
+    assert "item_id" not in res.conversa.dados and "item_nome" not in res.conversa.dados
 
 
 def test_finalizar_com_carrinho_esvaziado_por_indisponibilidade():
@@ -225,7 +225,13 @@ def test_pix_ignora_troco_e_retirada_ignora_endereco_deixados_nos_dados():
     conv = robo.Conversa(
         estado=robo.Estado.CONFIRMACAO,
         carrinho=[{"item_id": "t", "nome": "Tambaqui assado", "quantidade": 1}],
-        dados={"tipo": "retirada", "endereco": "Rua antiga, 10", "pagamento": "pix", "troco_para": 10000},
+        dados={
+            "tipo": "retirada",
+            "endereco": "Rua antiga, 10",
+            "pagamento": "pix",
+            "troco_para": 10000,
+            "total_resumo": 4590,
+        },
     )
     p = robo.processar(conv, "1", CTX).pedido
     assert p.endereco is None and p.troco_para_centavos is None
@@ -263,3 +269,44 @@ def test_item_indisponivel_durante_observacao_volta_ao_carrinho():
     so_bebidas = robo.Contexto("Sabor do Rio", (CTX.categorias[1],), aberto=True)
     res = robo.processar(conv, "sem gelo", so_bebidas)
     assert res.conversa.estado is robo.Estado.CARRINHO and res.pedido is None
+
+
+def test_zero_sem_observacao_anterior():
+    """REV-15: "0" sem observação salva não quebra (pop com padrão)."""
+    res = rodar(*RESUMO, "3", "0")
+    assert res.conversa.estado is robo.Estado.CONFIRMACAO and "observacao" not in res.conversa.dados
+
+
+# ---------------------------------------------------------------- menu exibido (REV-05)
+
+
+def test_categoria_que_saiu_do_menu_depois_de_exibida():
+    conv = rodar("oi").conversa  # menu: c1 Peixes, c2 Bebidas
+    so_peixes = robo.Contexto("Sabor do Rio", (CTX.categorias[0],), aberto=True)
+    res = robo.processar(conv, "2", so_peixes)
+    assert res.respostas == [robo.MSG_MENU_MUDOU, "Escolha uma categoria:\n1 - Peixes"]
+    assert res.conversa.estado is robo.Estado.CATEGORIAS and res.conversa.dados["menu"] == ["c1"]
+
+
+def test_conversa_sem_menu_salvo_usa_a_ordem_atual():
+    """Conversas gravadas antes do menu salvo continuam funcionando."""
+    cats = robo.processar(robo.Conversa(estado=robo.Estado.CATEGORIAS), "2", CTX)
+    assert cats.respostas[0].startswith("Bebidas:")
+    itens = robo.processar(robo.Conversa(estado=robo.Estado.ITENS, dados={"categoria_id": "c1"}), "1", CTX)
+    assert itens.respostas == ["Quantas unidades de Tambaqui assado? (1 a 20)"]
+    carrinho = [{"item_id": "t", "nome": "Tambaqui assado", "quantidade": 1}, {"item_id": "s", "nome": "Suco de cupuaçu", "quantidade": 1}]
+    rem = robo.processar(robo.Conversa(estado=robo.Estado.REMOVER, carrinho=[dict(l) for l in carrinho]), "2", CTX)
+    assert [l["item_id"] for l in rem.conversa.carrinho] == ["t"]
+
+
+def test_remover_linha_que_ja_saiu_do_carrinho():
+    conv = robo.Conversa(
+        estado=robo.Estado.REMOVER,
+        carrinho=[{"item_id": "s", "nome": "Suco de cupuaçu", "quantidade": 1}],
+        dados={"menu": ["t", "s"]},
+    )
+    res = robo.processar(conv, "1", CTX)
+    assert res.respostas[0] == robo.MSG_CARRINHO_MUDOU
+    assert [l["item_id"] for l in res.conversa.carrinho] == ["s"]
+    ok = robo.processar(robo.Conversa(estado=robo.Estado.REMOVER, carrinho=[{"item_id": "s", "nome": "Suco", "quantidade": 1}], dados={"menu": ["s"]}), "1", CTX)
+    assert robo.MSG_CARRINHO_MUDOU not in ok.respostas

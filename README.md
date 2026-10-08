@@ -41,7 +41,7 @@ A API aplica as migrações do banco sozinha ao subir. Coloque um proxy com HTTP
 ```bash
 # API
 cd pdv/api
-pip install -r requirements.lock.txt pytest pytest-cov
+pip install --require-hashes -r requirements.lock.txt && pip install pytest pytest-cov
 python -m pytest                                   # SQLite em memória
 TEST_DATABASE_URL=postgresql+psycopg://pdv:pdv@localhost/pdv_test python -m pytest   # PostgreSQL
 python scripts/verificar_rtm.py                    # cobertura BDD + regras de isolamento

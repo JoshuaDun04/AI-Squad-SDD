@@ -105,11 +105,17 @@ def test_preco_congelado_apos_mudanca(sabor, canal):
     assert detalhe["total_centavos"] == 10070
 
 
-@pytest.mark.bdd("BDD-PED-03")
-def test_preco_vale_o_do_momento_da_confirmacao(sabor, canal):
-    """Preço muda com o carrinho aberto: o pedido usa o preço vigente ao confirmar (RN-03)."""
+@pytest.mark.bdd("BDD-PED-07")
+def test_preco_mudou_depois_do_resumo_mostra_resumo_de_novo(sabor, canal):
+    """REV-06: o cliente só confirma o total que viu; o pedido usa o preço vigente (RN-03)."""
     sabor.conversa(TEL, "oi", "1", "1", "2", "3", "1", "1")
+    assert "Total: R$ 91,80" in _ultima(canal)
     sabor.client.patch(f"/itens/{sabor.itens['Tambaqui assado']}", json={"preco_centavos": 5000}, headers=sabor.h())
+    sabor.msg(TEL, "1")
+    resposta = _ultima(canal)
+    assert resposta.startswith("Os preços mudaram desde o resumo.")
+    assert "Total: R$ 100,00" in resposta
+    assert sabor.fila() == []
     sabor.msg(TEL, "1")
     assert _ultima(canal) == "Pedido #1 recebido! Total R$ 100,00"
 

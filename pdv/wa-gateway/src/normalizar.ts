@@ -92,3 +92,23 @@ export function mascarar(telefone: string): string {
   const d = telefone.replace(/\D/g, "");
   return d.length >= 4 ? `*****-${d.slice(-4)}` : "*****";
 }
+
+/** Telefone, LID ou JID: 8 a 15 dígitos sem encostar em letra, dígito ou hífen. */
+const RE_NUMERO = /(?<![\w-])\+?\d{8,15}(?![\w-])/g;
+
+/**
+ * Mascara números de telefone em qualquer valor que vá para o log do Baileys (REV-09).
+ * A biblioteca registra chaves de mensagem e JIDs em avisos comuns.
+ */
+export function mascararProfundo(valor: unknown, profundidade = 0): unknown {
+  if (typeof valor === "string") return valor.replace(RE_NUMERO, (m) => mascarar(m));
+  if (profundidade > 6 || valor === null || typeof valor !== "object") return valor;
+  if (valor instanceof Error) {
+    return { tipo: valor.name, mensagem: mascararProfundo(valor.message, profundidade + 1) };
+  }
+  if (Array.isArray(valor)) return valor.map((v) => mascararProfundo(v, profundidade + 1));
+  if (Buffer.isBuffer(valor) || valor instanceof Uint8Array) return `<${valor.length} bytes>`;
+  const saida: Record<string, unknown> = {};
+  for (const [chave, v] of Object.entries(valor)) saida[chave] = mascararProfundo(v, profundidade + 1);
+  return saida;
+}

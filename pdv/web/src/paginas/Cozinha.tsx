@@ -13,7 +13,7 @@ const COLUNAS: { status: StatusPedido; titulo: string; vazio: string }[] = [
 ];
 
 export default function Cozinha() {
-  const { api, sessao } = useSessao();
+  const { api, sessao, eu } = useSessao();
   const [fila, setFila] = useState<PedidoFila[] | null>(null);
   const [agora, setAgora] = useState(Date.now());
   const [aviso, setAviso] = useState("");
@@ -86,7 +86,7 @@ export default function Cozinha() {
                       <div className="ticket-cabeca">
                         <span className="ticket-num">#{p.numero}</span>
                         <span className="ticket-tempo">
-                          <time dateTime={p.criado_em}>{hora(p.criado_em)}</time>
+                          <time dateTime={p.criado_em}>{hora(p.criado_em, eu?.fuso)}</time>
                           <strong>{min} min</strong>
                         </span>
                       </div>

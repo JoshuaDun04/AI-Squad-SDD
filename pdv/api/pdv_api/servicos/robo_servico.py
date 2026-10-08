@@ -7,7 +7,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from pdv_api import modelos as m
@@ -23,6 +22,7 @@ from pdv_api.servicos.comum import agora_local, enviar_sem_falhar, faixas
 log = logging.getLogger("pdv_api.robo")
 
 EXPIRACAO = timedelta(minutes=30)  # RN-06
+RETENCAO_CONVERSA = timedelta(hours=24)  # RN-10: dados de carrinho abandonado são apagados depois disso
 
 
 @dataclass(frozen=True)
@@ -65,18 +65,26 @@ def montar_contexto(
 def processar_mensagem(
     sessao: Session, msg: MensagemRecebida, relogio: Relogio, canal: CanalMensagens
 ) -> m.Pedido | None:
-    """Idempotente por mensagem_id (BDD-WA-04). Retorna o pedido criado, se houver."""
+    """Processa uma mensagem do cliente. Retorna o pedido criado, se houver.
+
+    - Idempotente por mensagem_id (BDD-WA-04).
+    - Mensagens do mesmo cliente são serializadas pela trava da conversa (REV-01):
+      duas confirmações simultâneas criam um pedido só.
+    """
     restaurante = RepoRestaurantes(sessao).obter(msg.restaurante_id)
     if restaurante is None:
         raise RestauranteInexistente()
     rid = restaurante.id
     conversas = RepoConversas(sessao, rid)
-    if conversas.mensagem_ja_processada(msg.mensagem_id):
+
+    cliente = conversas.cliente(msg.telefone, msg.nome_perfil)
+    conversa_db = conversas.conversa_travada(cliente.id)  # trava até o commit
+    if not conversas.reservar_mensagem(msg.mensagem_id):
+        sessao.rollback()
+        log.info("mensagem duplicada ignorada restaurante=%s", rid)
         return None
 
-    agora = relogio.agora()
-    cliente = conversas.cliente(msg.telefone, msg.nome_perfil)
-    conversa_db = conversas.conversa(cliente.id)
+    agora = relogio.agora()  # depois da trava: a ordem de chegada é a ordem de processamento
     ctx = montar_contexto(sessao, restaurante, agora, conversa_db.ultima_msg_em)
     estado = robo.Conversa(
         estado=robo.Estado(conversa_db.estado),
@@ -95,19 +103,18 @@ def processar_mensagem(
     conversa_db.carrinho_json = resultado.conversa.carrinho
     conversa_db.dados_json = resultado.conversa.dados
     conversa_db.ultima_msg_em = agora
-    conversas.marcar_processada(msg.mensagem_id)
-    try:
-        sessao.commit()
-    except IntegrityError:
-        # outra entrega da mesma mensagem ganhou a corrida: nada a fazer
-        sessao.rollback()
-        log.info("mensagem duplicada ignorada restaurante=%s", rid)
-        return None
+    sessao.commit()
 
     if pedido is not None:
         log.info("pedido criado restaurante=%s numero=%s cliente=%s", rid, pedido.numero, mascarar_telefone(msg.telefone))
     if respostas:
         enviar_sem_falhar(canal, rid, msg.telefone, "\n\n".join(respostas))
+
+    # Transação própria e curta, sem segurar outras travas
+    if conversas.limpar_abandonadas(agora - RETENCAO_CONVERSA):
+        sessao.commit()
+    else:
+        sessao.rollback()
     return pedido
 
 

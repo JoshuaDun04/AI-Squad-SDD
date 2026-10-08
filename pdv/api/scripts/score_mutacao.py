@@ -40,6 +40,9 @@ def main() -> int:
     score = 100 * total["killed"] / (total["killed"] + vivos)
     saida["total"] = {**total, "score": round(score, 1)}
     print(f"{'TOTAL':10} {score:6.1f}%  (mínimo {args.minimo}%)")
+    if total["not checked"]:
+        print(f"{total['not checked']} mutantes não avaliados: a execução do mutmut não terminou")
+        return 1
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump(saida, f, indent=2)

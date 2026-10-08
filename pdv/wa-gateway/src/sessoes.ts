@@ -19,7 +19,7 @@ import QRCode from "qrcode";
 import type { ClienteApi } from "./api.js";
 import { SessaoIndisponivel, type Sessoes } from "./app.js";
 import { MapaContatos } from "./contatos.js";
-import { mascarar, normalizar, type MensagemBaileys } from "./normalizar.js";
+import { mascarar, mascararProfundo, normalizar, type MensagemBaileys } from "./normalizar.js";
 
 const MAX_RECONEXOES = 5;
 
@@ -34,7 +34,15 @@ interface Estado {
 
 export class SessoesBaileys implements Sessoes {
   private readonly estados = new Map<string, Estado>();
-  private readonly logger = pino({ level: process.env.BAILEYS_LOG ?? "warn" });
+  // Todo argumento de log do Baileys passa pela máscara de telefone (RN-10, REV-09)
+  private readonly logger = pino({
+    level: process.env.BAILEYS_LOG ?? "warn",
+    hooks: {
+      logMethod(args, metodo) {
+        return metodo.apply(this, args.map((a) => mascararProfundo(a)) as Parameters<typeof metodo>);
+      },
+    },
+  });
 
   constructor(
     private readonly dataDir: string,

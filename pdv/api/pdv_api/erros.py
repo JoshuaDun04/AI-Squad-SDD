@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -46,3 +48,23 @@ def registrar_tratadores(app: FastAPI) -> None:
     async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         codigo = {404: "nao_encontrado", 405: "metodo_nao_permitido"}.get(exc.status_code, "erro_http")
         return JSONResponse({"erro": codigo, "detalhe": str(exc.detail)}, status_code=exc.status_code)
+
+
+_log = logging.getLogger("pdv_api.erro")
+
+
+def registrar_erro_interno(app: FastAPI) -> None:
+    """Erro não tratado vira 500 sem traceback no log (RN-10, REV-02).
+
+    O traceback de uma exceção do banco carrega os valores da consulta, como
+    telefone e nome. Aqui só o tipo da exceção e a rota são registrados, e a
+    exceção não é repassada ao servidor (que imprimiria o traceback).
+    """
+
+    @app.middleware("http")
+    async def _sem_traceback(request: Request, chamar_proximo):  # type: ignore[no-untyped-def]
+        try:
+            return await chamar_proximo(request)
+        except Exception as exc:  # noqa: BLE001
+            _log.error("erro interno %s em %s %s", type(exc).__name__, request.method, request.url.path)
+            return JSONResponse({"erro": "interno", "detalhe": "erro interno"}, status_code=500)

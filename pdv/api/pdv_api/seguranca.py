@@ -42,6 +42,7 @@ class Principal:
     usuario_id: uuid.UUID
     restaurante_id: uuid.UUID
     papel: str
+    versao: int = 1  # sessao_versao do usuário quando o token foi emitido (REV-13)
 
 
 def emitir_token(principal: Principal, agora: datetime, segredo: str) -> str:
@@ -50,6 +51,7 @@ def emitir_token(principal: Principal, agora: datetime, segredo: str) -> str:
         "usuario_id": str(principal.usuario_id),
         "restaurante_id": str(principal.restaurante_id),
         "papel": principal.papel,
+        "ver": principal.versao,
         "iat": int(agora.timestamp()),
         "exp": int((agora + VALIDADE_TOKEN).timestamp()),
     }
@@ -76,6 +78,11 @@ def ler_token(token: str, agora: datetime, segredo: str) -> Principal:
     if dados["papel"] not in PAPEIS:
         raise TokenInvalido("papel inválido")
     try:
-        return Principal(uuid.UUID(dados["usuario_id"]), uuid.UUID(dados["restaurante_id"]), dados["papel"])
-    except ValueError as exc:
+        return Principal(
+            uuid.UUID(dados["usuario_id"]),
+            uuid.UUID(dados["restaurante_id"]),
+            dados["papel"],
+            int(dados.get("ver", 0)),
+        )
+    except (ValueError, TypeError) as exc:
         raise TokenInvalido("token inválido") from exc

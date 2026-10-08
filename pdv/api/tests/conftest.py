@@ -44,9 +44,9 @@ TERCA_MEIO_DIA = manaus(2026, 10, 6, 12, 0)
 def engine():
     url = os.environ.get("TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
     if url.startswith("sqlite"):
-        eng = create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        eng = create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool, hide_parameters=True)
     else:
-        eng = create_engine(url)
+        eng = create_engine(url, hide_parameters=True)
     Base.metadata.drop_all(eng)
     Base.metadata.create_all(eng)
     yield eng

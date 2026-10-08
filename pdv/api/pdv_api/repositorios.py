@@ -14,8 +14,8 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session
 
 from pdv_api import modelos as m
@@ -66,6 +66,12 @@ class RepoAutenticacao:
             self.s.execute(delete(m.TentativaLogin).where(m.TentativaLogin.momento < antes_de))
 
 
+def _insert(sessao: Session, modelo: type) -> postgresql.Insert | sqlite.Insert:
+    """INSERT com suporte a ON CONFLICT no PostgreSQL (produção) e no SQLite (testes)."""
+    dialeto = sessao.get_bind().dialect.name
+    return (postgresql.insert if dialeto == "postgresql" else sqlite.insert)(modelo)
+
+
 class _RepoDoRestaurante:
     def __init__(self, sessao: Session, restaurante_id: uuid.UUID) -> None:
         if restaurante_id is None:
@@ -86,7 +92,9 @@ class RepoUsuarios(_RepoDoRestaurante):
         )
 
     def criar(self, email: str, senha_hash: str, papel: str) -> m.Usuario:
-        u = m.Usuario(restaurante_id=self.rid, email=email.lower(), senha_hash=senha_hash, papel=papel, ativo=True)
+        u = m.Usuario(
+            restaurante_id=self.rid, email=email.lower(), senha_hash=senha_hash, papel=papel, ativo=True, sessao_versao=1
+        )
         self.s.add(u)
         self.s.flush()
         return u
@@ -189,28 +197,29 @@ class RepoConexao(_RepoDoRestaurante):
 
 
 class RepoConversas(_RepoDoRestaurante):
-    def mensagem_ja_processada(self, mensagem_id: str) -> bool:
-        return (
-            self.s.scalar(
-                select(func.count())
-                .select_from(m.MensagemProcessada)
-                .where(m.MensagemProcessada.restaurante_id == self.rid, m.MensagemProcessada.mensagem_id == mensagem_id)
-            )
-            or 0
-        ) > 0
-
-    def marcar_processada(self, mensagem_id: str) -> None:
-        self.s.add(m.MensagemProcessada(restaurante_id=self.rid, mensagem_id=mensagem_id))
+    def reservar_mensagem(self, mensagem_id: str) -> bool:
+        """Registra o mensagem_id; False se já existia (BDD-WA-04). Seguro sob concorrência."""
+        stmt = (
+            _insert(self.s, m.MensagemProcessada)
+            .values(restaurante_id=self.rid, mensagem_id=mensagem_id)
+            .on_conflict_do_nothing(index_elements=["restaurante_id", "mensagem_id"])
+            .returning(m.MensagemProcessada.mensagem_id)
+        )
+        return self.s.execute(stmt).first() is not None
 
     def cliente(self, telefone: str, nome_perfil: str) -> m.Cliente:
-        c = self.s.scalar(
-            select(m.Cliente).where(m.Cliente.restaurante_id == self.rid, m.Cliente.telefone == telefone)
+        """Cria o cliente se não existir, sem corrida entre mensagens simultâneas (REV-02)."""
+        self.s.execute(
+            _insert(self.s, m.Cliente)
+            .values(id=uuid.uuid4(), restaurante_id=self.rid, telefone=telefone, nome_perfil=nome_perfil or "")
+            .on_conflict_do_nothing(index_elements=["restaurante_id", "telefone"])
         )
-        if c is None:
-            c = m.Cliente(restaurante_id=self.rid, telefone=telefone, nome_perfil=nome_perfil or "")
-            self.s.add(c)
-            self.s.flush()
-        elif nome_perfil and c.nome_perfil != nome_perfil:
+        c = self.s.scalar(
+            select(m.Cliente)
+            .where(m.Cliente.restaurante_id == self.rid, m.Cliente.telefone == telefone)
+            .execution_options(populate_existing=True)
+        )
+        if nome_perfil and c.nome_perfil != nome_perfil:
             c.nome_perfil = nome_perfil
         return c
 
@@ -219,15 +228,40 @@ class RepoConversas(_RepoDoRestaurante):
             select(m.Cliente).where(m.Cliente.id == cliente_id, m.Cliente.restaurante_id == self.rid)
         )
 
-    def conversa(self, cliente_id: uuid.UUID) -> m.Conversa:
-        c = self.s.scalar(
-            select(m.Conversa).where(m.Conversa.restaurante_id == self.rid, m.Conversa.cliente_id == cliente_id)
+    def conversa_travada(self, cliente_id: uuid.UUID) -> m.Conversa:
+        """Conversa do cliente com a linha travada até o commit: mensagens do mesmo
+        cliente são processadas uma de cada vez (REV-01)."""
+        self.s.execute(
+            _insert(self.s, m.Conversa)
+            .values(
+                id=uuid.uuid4(),
+                restaurante_id=self.rid,
+                cliente_id=cliente_id,
+                estado="INICIO",
+                carrinho_json=[],
+                dados_json={},
+            )
+            .on_conflict_do_nothing(index_elements=["restaurante_id", "cliente_id"])
         )
-        if c is None:
-            c = m.Conversa(restaurante_id=self.rid, cliente_id=cliente_id, estado="INICIO", carrinho_json=[], dados_json={})
-            self.s.add(c)
-            self.s.flush()
-        return c
+        return self.s.scalar(
+            select(m.Conversa)
+            .where(m.Conversa.restaurante_id == self.rid, m.Conversa.cliente_id == cliente_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+
+    def limpar_abandonadas(self, antes_de: datetime) -> int:
+        """RN-10: carrinho, endereço e observação de conversas paradas não ficam guardados (REV-17)."""
+        res = self.s.execute(
+            update(m.Conversa)
+            .where(
+                m.Conversa.restaurante_id == self.rid,
+                m.Conversa.ultima_msg_em < antes_de,
+                m.Conversa.estado != "INICIO",
+            )
+            .values(estado="INICIO", carrinho_json=[], dados_json={})
+        )
+        return res.rowcount or 0
 
 
 class RepoPedidos(_RepoDoRestaurante):
@@ -281,12 +315,13 @@ class RepoPedidos(_RepoDoRestaurante):
         )
 
     def _proximo_numero(self, data_local: date) -> int:
-        atual = self.s.scalar(
-            select(func.max(m.Pedido.numero)).where(
-                m.Pedido.restaurante_id == self.rid, m.Pedido.data_local == data_local
-            )
-        )
-        return (atual or 0) + 1
+        """Incremento atômico no contador do dia; não depende de max()+1 (REV-04)."""
+        tabela = m.ContadorPedido
+        stmt = _insert(self.s, tabela).values(restaurante_id=self.rid, data_local=data_local, ultimo=1)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["restaurante_id", "data_local"], set_={"ultimo": tabela.ultimo + 1}
+        ).returning(tabela.ultimo)
+        return int(self.s.execute(stmt).scalar_one())
 
     def criar(
         self,
@@ -297,36 +332,25 @@ class RepoPedidos(_RepoDoRestaurante):
         linhas: list[tuple[uuid.UUID, str, int, int]],  # item_id, nome, preço, quantidade
         **campos: object,
     ) -> m.Pedido:
-        """RT-08: número sequencial por restaurante e dia local; tenta de novo em corrida."""
-        for _ in range(5):
-            savepoint = self.s.begin_nested()
-            try:
-                pedido = m.Pedido(
-                    restaurante_id=self.rid,
-                    cliente_id=cliente_id,
-                    numero=self._proximo_numero(data_local),
-                    data_local=data_local,
-                    criado_em=criado_em,
-                    **campos,
+        """RT-08: número sequencial por restaurante e dia local."""
+        pedido = m.Pedido(
+            restaurante_id=self.rid,
+            cliente_id=cliente_id,
+            numero=self._proximo_numero(data_local),
+            data_local=data_local,
+            criado_em=criado_em,
+            **campos,
+        )
+        self.s.add(pedido)
+        self.s.flush()
+        for item_id, nome, preco, qtd in linhas:
+            self.s.add(
+                m.PedidoItem(
+                    pedido_id=pedido.id, item_id=item_id, nome=nome, preco_unitario_centavos=preco, quantidade=qtd
                 )
-                self.s.add(pedido)
-                self.s.flush()
-                for item_id, nome, preco, qtd in linhas:
-                    self.s.add(
-                        m.PedidoItem(
-                            pedido_id=pedido.id,
-                            item_id=item_id,
-                            nome=nome,
-                            preco_unitario_centavos=preco,
-                            quantidade=qtd,
-                        )
-                    )
-                self.s.flush()
-                savepoint.commit()
-                return pedido
-            except IntegrityError:
-                savepoint.rollback()
-        raise RuntimeError("não foi possível numerar o pedido")
+            )
+        self.s.flush()
+        return pedido
 
 
 def limite_janela(agora: datetime, minutos: int) -> datetime:

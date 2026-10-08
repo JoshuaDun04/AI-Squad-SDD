@@ -21,6 +21,7 @@ class Config:
     gateway_url: str = "http://wa-gateway:3001"
     cors_origens: tuple[str, ...] = field(default_factory=tuple)
     login_max_tentativas: int = 5
+    login_max_tentativas_ip: int = 30
     login_janela_min: int = 15
 
     def __post_init__(self) -> None:

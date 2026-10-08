@@ -30,8 +30,9 @@ export function urgencia(minutos: number): "normal" | "atencao" | "atrasado" {
   return "normal";
 }
 
-export function hora(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+/** Hora no fuso do restaurante, não no do aparelho. */
+export function hora(iso: string, fuso?: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: fuso || undefined });
 }
 
 export const PAGAMENTO: Record<string, string> = { pix: "Pix", dinheiro: "Dinheiro", cartao: "Cartão" };

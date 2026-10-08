@@ -18,17 +18,17 @@
     "score": 95.2
   },
   "robo": {
-    "killed": 763,
-    "survived": 14,
-    "score": 98.2
+    "killed": 892,
+    "survived": 27,
+    "score": 97.1
   },
   "status": {
     "killed": 11,
     "score": 100.0
   },
   "total": {
-    "killed": 944,
-    "survived": 18,
-    "score": 98.1
+    "killed": 1073,
+    "survived": 31,
+    "score": 97.2
   }
 }

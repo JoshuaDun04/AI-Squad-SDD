@@ -40,7 +40,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: pdv/api/requirements.lock.txt
-      - run: pip install -r requirements.lock.txt pytest pytest-cov pip-audit
+      - run: pip install --require-hashes -r requirements.lock.txt
+      - run: pip install pytest pytest-cov pip-audit
       - name: Migrações (upgrade, check, downgrade, upgrade)
         env:
           DATABASE_URL: postgresql+psycopg://pdv:pdv@localhost:5432/postgres
@@ -54,7 +55,7 @@ jobs:
       - name: Verificador de RTM e arquitetura (ADR-0001)
         run: python scripts/verificar_rtm.py --json rtm.json
       - name: Auditoria de dependências
-        run: pip-audit -r requirements.lock.txt
+        run: pip-audit -r requirements.lock.txt --require-hashes --disable-pip
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -77,7 +78,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: pdv/api/requirements.lock.txt
-      - run: pip install -r requirements.lock.txt pytest "mutmut>=3,<4"
+      - run: pip install --require-hashes -r requirements.lock.txt
+      - run: pip install pytest "mutmut>=3,<4"
       - run: mutmut run --max-children 4 || true
       - name: Score
         run: mutmut results --all true | python scripts/score_mutacao.py --minimo 85 --json mutacao.json

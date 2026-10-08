@@ -33,6 +33,9 @@ MSG_OBSERVACAO = (
     "Envie 0 para ficar sem observação."
 )
 MSG_OBSERVACAO_LONGA = "A observação pode ter no máximo 140 caracteres."
+MSG_MENU_MUDOU = "O cardápio mudou desde a última mensagem. Confira as opções de novo."
+MSG_CARRINHO_MUDOU = "O carrinho mudou desde a última mensagem. Confira de novo."
+MSG_PRECO_MUDOU = "Os preços mudaram desde o resumo. Confira o pedido atualizado antes de confirmar."
 
 PAGAMENTOS = {"1": "pix", "2": "dinheiro", "3": "cartao"}
 ROTULO_PAGAMENTO = {"pix": "Pix", "dinheiro": "Dinheiro", "cartao": "Cartão na entrega/retirada"}
@@ -217,7 +220,35 @@ def _ir_categorias(conversa: Conversa, ctx: Contexto, respostas: list[str]) -> R
         respostas.append("No momento nosso cardápio está indisponível. Tente novamente mais tarde.")
         return Resultado(Conversa(carrinho=conversa.carrinho), respostas)
     conversa.estado = Estado.CATEGORIAS
+    conversa.dados["menu"] = [c.id for c in ctx.categorias]  # REV-05: número → id exibido
     respostas.append(texto_categorias(ctx, conversa))
+    return Resultado(conversa, respostas)
+
+
+def _escolha(conversa: Conversa, op: int | None, ids_atuais: list[str]) -> str | None:
+    """Converte o número digitado no id que estava na tela quando o cliente leu o menu.
+
+    Se o menu salvo não existir (conversa antiga), usa a ordem atual.
+    """
+    menu = conversa.dados.get("menu") or ids_atuais
+    if op is None or not 1 <= op <= len(menu):
+        return None
+    return menu[op - 1]
+
+
+def _mostrar_itens(conversa: Conversa, cat: CategoriaVista, respostas: list[str]) -> Resultado:
+    conversa.estado = Estado.ITENS
+    conversa.dados["categoria_id"] = cat.id
+    conversa.dados["menu"] = [it.id for it in cat.itens]
+    respostas.append(texto_itens(cat))
+    return Resultado(conversa, respostas)
+
+
+def _mostrar_resumo(conversa: Conversa, ctx: Contexto, respostas: list[str]) -> Resultado:
+    """Mostra o resumo e guarda o total exibido: o cliente só confirma o que viu (REV-06)."""
+    conversa.estado = Estado.CONFIRMACAO
+    conversa.dados["total_resumo"] = _total(conversa, ctx)
+    respostas.append(texto_resumo(conversa, ctx))
     return Resultado(conversa, respostas)
 
 
@@ -280,14 +311,15 @@ def _categorias(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[s
     op = _opcao(texto)
     if op == 0 and conversa.carrinho:
         return _ir_carrinho(conversa, ctx, respostas)
-    if op is None or not 1 <= op <= len(ctx.categorias):
+    cid = _escolha(conversa, op, [c.id for c in ctx.categorias])
+    if cid is None:
         respostas.append(MSG_OPCAO_INVALIDA)
         return _ir_categorias(conversa, ctx, respostas)
-    cat = ctx.categorias[op - 1]
-    conversa.estado = Estado.ITENS
-    conversa.dados["categoria_id"] = cat.id
-    respostas.append(texto_itens(cat))
-    return Resultado(conversa, respostas)
+    cat = next((c for c in ctx.categorias if c.id == cid), None)
+    if cat is None:  # a categoria escolhida saiu do menu depois que o cliente o leu
+        respostas.append(MSG_MENU_MUDOU)
+        return _ir_categorias(conversa, ctx, respostas)
+    return _mostrar_itens(conversa, cat, respostas)
 
 
 def _categoria_atual(conversa: Conversa, ctx: Contexto) -> CategoriaVista | None:
@@ -302,11 +334,14 @@ def _itens(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str]) 
     op = _opcao(texto)
     if op == 0:
         return _ir_categorias(conversa, ctx, respostas)
-    if op is None or not 1 <= op <= len(cat.itens):
+    item_id = _escolha(conversa, op, [it.id for it in cat.itens])
+    if item_id is None:
         respostas.append(MSG_OPCAO_INVALIDA)
-        respostas.append(texto_itens(cat))
-        return Resultado(conversa, respostas)
-    item = cat.itens[op - 1]
+        return _mostrar_itens(conversa, cat, respostas)
+    item = next((it for it in cat.itens if it.id == item_id), None)
+    if item is None:  # o item escolhido ficou indisponível depois que o cliente leu o menu
+        respostas.append(MSG_MENU_MUDOU)
+        return _mostrar_itens(conversa, cat, respostas)
     conversa.estado = Estado.QUANTIDADE
     conversa.dados["item_id"] = item.id
     conversa.dados["item_nome"] = item.nome
@@ -347,6 +382,7 @@ def _carrinho(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str
         if not conversa.carrinho:
             return _ir_carrinho(conversa, ctx, respostas)
         conversa.estado = Estado.REMOVER
+        conversa.dados["menu"] = [l["item_id"] for l in conversa.carrinho]
         linhas = ["Qual item remover?"]
         linhas += [f"{i} - {l['quantidade']} × {l['nome']}" for i, l in enumerate(conversa.carrinho, start=1)]
         linhas.append("0 - Voltar")
@@ -368,11 +404,16 @@ def _carrinho(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str
 
 def _remover(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str]) -> Resultado:
     op = _opcao(texto)
-    if op is not None and 1 <= op <= len(conversa.carrinho):
-        conversa.carrinho.pop(op - 1)
+    if op == 0:
         return _ir_carrinho(conversa, ctx, respostas)
-    if op != 0:
+    item_id = _escolha(conversa, op, [l["item_id"] for l in conversa.carrinho])
+    if item_id is None:
         respostas.append(MSG_OPCAO_INVALIDA)
+        return _ir_carrinho(conversa, ctx, respostas)
+    restantes = [l for l in conversa.carrinho if l["item_id"] != item_id]
+    if len(restantes) == len(conversa.carrinho):  # a linha já tinha saído do carrinho
+        respostas.append(MSG_CARRINHO_MUDOU)
+    conversa.carrinho = restantes
     return _ir_carrinho(conversa, ctx, respostas)
 
 
@@ -414,9 +455,7 @@ def _pagamento(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[st
         conversa.estado = Estado.TROCO
         respostas.append(_texto_troco(_total(conversa, ctx)))
         return Resultado(conversa, respostas)
-    conversa.estado = Estado.CONFIRMACAO
-    respostas.append(texto_resumo(conversa, ctx))
-    return Resultado(conversa, respostas)
+    return _mostrar_resumo(conversa, ctx, respostas)
 
 
 def _eh_sem_troco(texto: str) -> bool:
@@ -435,9 +474,7 @@ def _troco(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str]) 
             )
             return Resultado(conversa, respostas)
         conversa.dados["troco_para"] = valor
-    conversa.estado = Estado.CONFIRMACAO
-    respostas.append(texto_resumo(conversa, ctx))
-    return Resultado(conversa, respostas)
+    return _mostrar_resumo(conversa, ctx, respostas)
 
 
 def _confirmacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str]) -> Resultado:
@@ -451,7 +488,7 @@ def _confirmacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[
         conversa.estado = Estado.OBSERVACAO
         return Resultado(conversa, [MSG_OBSERVACAO])
     if op != 1:
-        return Resultado(conversa, [MSG_OPCAO_INVALIDA, texto_resumo(conversa, ctx)])
+        return _mostrar_resumo(conversa, ctx, [MSG_OPCAO_INVALIDA])
 
     # Carrinho não fica vazio aqui: item indisponível devolve o cliente ao carrinho antes
     linhas = tuple(_linhas(conversa, ctx))
@@ -462,6 +499,8 @@ def _confirmacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[
         conversa.estado = Estado.TROCO
         respostas.append(_texto_troco(total))
         return Resultado(conversa, respostas)
+    if d.get("total_resumo") != total:  # REV-06: confirma só o total que o cliente viu
+        return _mostrar_resumo(conversa, ctx, [MSG_PRECO_MUDOU])
     pedido = PedidoConfirmado(
         linhas=linhas,
         tipo=d["tipo"],
@@ -486,9 +525,7 @@ def _observacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[s
         return Resultado(conversa, [MSG_OBSERVACAO_LONGA, MSG_OBSERVACAO])
     else:
         conversa.dados["observacao"] = obs
-    conversa.estado = Estado.CONFIRMACAO
-    respostas.append(texto_resumo(conversa, ctx))
-    return Resultado(conversa, respostas)
+    return _mostrar_resumo(conversa, ctx, respostas)
 
 
 _HANDLERS = {

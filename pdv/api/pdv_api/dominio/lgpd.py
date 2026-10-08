@@ -10,7 +10,9 @@ from __future__ import annotations
 import logging
 import re
 
-_RE_TELEFONE = re.compile(r"(?<!\d)\+?\d{10,13}(?!\d)")
+# 8 a 15 dígitos (número ou identificador LID), sem encostar em letras, dígitos ou hífen:
+# assim trechos de UUID e datas não são confundidos com telefone (REV-11).
+_RE_TELEFONE = re.compile(r"(?<![\w-])\+?\d{8,15}(?![\w-])")
 
 
 def mascarar_telefone(telefone: str) -> str:

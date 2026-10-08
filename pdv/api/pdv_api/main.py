@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from pdv_api.config import Config
 from pdv_api.dominio.canal import CanalMensagens
 from pdv_api.dominio.lgpd import instalar_filtro
-from pdv_api.erros import registrar_tratadores
+from pdv_api.erros import registrar_erro_interno, registrar_tratadores
 from pdv_api.gateway_baileys import GatewayBaileys
 from pdv_api.relogio import Relogio, RelogioSistema
 from pdv_api.rotas import auth, canal, cardapio, horarios, pedidos, usuarios, whatsapp
@@ -26,7 +26,8 @@ def criar_app(
 ) -> FastAPI:
     app = FastAPI(title="PDV Restaurantes — API", version="0.1.0")
     if fabrica_sessao is None:
-        engine = create_engine(config.database_url, pool_pre_ping=True)
+        # hide_parameters: valores (telefone, endereço) nunca aparecem em mensagens de erro do SQLAlchemy
+        engine = create_engine(config.database_url, pool_pre_ping=True, hide_parameters=True)
         fabrica_sessao = sessionmaker(engine, expire_on_commit=False)
     app.state.fabrica_sessao = fabrica_sessao
     app.state.config = config
@@ -42,6 +43,7 @@ def criar_app(
         )
 
     registrar_tratadores(app)
+    registrar_erro_interno(app)
     for r in (auth.router, usuarios.router, cardapio.router, horarios.router, whatsapp.router, pedidos.router, canal.router):
         app.include_router(r)
 

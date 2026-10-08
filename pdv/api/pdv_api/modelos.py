@@ -45,6 +45,8 @@ class Usuario(Base):
     senha_hash: Mapped[str] = mapped_column(String(255))
     papel: Mapped[str] = mapped_column(String(20))
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Incrementada ao trocar senha, papel ou desativar: invalida tokens já emitidos (REV-13)
+    sessao_versao: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class TentativaLogin(Base):
@@ -142,6 +144,15 @@ class Pedido(Base):
     motivo_cancelamento: Mapped[str | None] = mapped_column(String(300), nullable=True)
     observacao: Mapped[str | None] = mapped_column(String(140), nullable=True)  # RN-11
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ContadorPedido(Base):
+    """RT-08: último número usado por restaurante e dia local; incremento atômico (REV-04)."""
+
+    __tablename__ = "contador_pedido"
+    restaurante_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("restaurante.id"), primary_key=True)
+    data_local: Mapped[date] = mapped_column(Date, primary_key=True)
+    ultimo: Mapped[int] = mapped_column(Integer)
 
 
 class PedidoItem(Base):

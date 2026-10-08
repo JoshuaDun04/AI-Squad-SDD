@@ -140,3 +140,61 @@ def test_clientes_tem_conversas_separadas(sabor, canal):
     sabor.msg("5592900000000", "oi")
     sabor.msg(TEL, "1")
     assert _ultima(canal) == "Quantas unidades de Tambaqui assado? (1 a 20)"
+
+
+@pytest.mark.bdd("BDD-ROB-07")
+def test_item_escolhido_por_numero_de_menu_antigo(sabor, canal):
+    """REV-05: o número vale para o menu que o cliente leu, não para o atual."""
+    sabor.conversa(TEL, "oi", "1")  # vê 1 - Tambaqui, 2 - Pirarucu
+    sabor.client.patch(f"/itens/{sabor.itens['Tambaqui assado']}", json={"disponivel": False}, headers=sabor.h())
+    sabor.msg(TEL, "1")
+    resposta = _ultima(canal)
+    assert resposta.startswith("O cardápio mudou desde a última mensagem.")
+    assert "Pirarucu" not in resposta.split("\n")[0]
+    assert "Quantas unidades" not in resposta
+    assert "1 - Pirarucu de casaca" in resposta  # menu reexibido com a numeração nova
+
+
+@pytest.mark.bdd("BDD-ROB-07")
+def test_categoria_nova_nao_desloca_a_escolha(sabor, canal):
+    sabor.conversa(TEL, "oi")  # 1 Peixes, 2 Bebidas, 3 Sobremesas
+    sabor.categoria("Entradas", 0)  # entraria antes de Peixes
+    sabor.item("Entradas", "Bolinho de piracuí", 1500)
+    sabor.msg(TEL, "2")
+    assert _ultima(canal).startswith("Bebidas:")
+
+
+@pytest.mark.bdd("BDD-ROB-07")
+def test_remover_usa_a_lista_mostrada(sabor, canal):
+    # 2 Tambaqui, 1 Suco, 1 Pudim
+    sabor.conversa(TEL, "oi", "1", "1", "2", "1", "2", "1", "1", "1", "3", "1", "1")
+    sabor.msg(TEL, "2")  # lista: 1 Tambaqui, 2 Suco, 3 Pudim
+    sabor.client.patch(f"/itens/{sabor.itens['Tambaqui assado']}", json={"disponivel": False}, headers=sabor.h())
+    sabor.msg(TEL, "2")  # quer remover o Suco
+    carrinho = _ultima(canal)
+    assert "Suco" not in carrinho.split("Seu carrinho:")[1]
+    assert "1 × Pudim" in carrinho
+
+
+def test_conversa_abandonada_tem_dados_apagados_depois_de_24h(sabor, canal, relogio, fabrica):
+    """REV-17 / RN-10: endereço e carrinho de conversa parada não ficam guardados."""
+    from pdv_api import modelos as m
+
+    sabor.conversa(TEL, "oi", "1", "1", "1", "3", "2", "Rua das Palmeiras, 99, Centro")
+    relogio.avancar(hours=25)
+    sabor.msg("5592900009999", "oi")  # qualquer mensagem do restaurante dispara a limpeza
+    with fabrica() as s:
+        cliente = s.query(m.Cliente).filter_by(telefone=TEL).one()
+        conversa = s.query(m.Conversa).filter_by(cliente_id=cliente.id).one()
+        assert conversa.estado == "INICIO" and conversa.carrinho_json == [] and conversa.dados_json == {}
+
+
+def test_conversa_recente_nao_e_apagada(sabor, canal, relogio, fabrica):
+    from pdv_api import modelos as m
+
+    sabor.conversa(TEL, "oi", "1", "1", "2")
+    relogio.avancar(hours=23)
+    sabor.msg("5592900009999", "oi")
+    with fabrica() as s:
+        cliente = s.query(m.Cliente).filter_by(telefone=TEL).one()
+        assert s.query(m.Conversa).filter_by(cliente_id=cliente.id).one().carrinho_json != []

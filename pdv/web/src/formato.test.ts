@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { traduzirErro } from "./api";
-import { brl, lerPreco, minutosDesde, PROXIMO, urgencia } from "./formato";
+import { brl, hora, lerPreco, minutosDesde, PROXIMO, urgencia } from "./formato";
 
 describe("formato", () => {
   it("formata centavos em reais", () => {
@@ -27,6 +27,11 @@ describe("formato", () => {
     expect(urgencia(14)).toBe("normal");
     expect(urgencia(15)).toBe("atencao");
     expect(urgencia(25)).toBe("atrasado");
+  });
+
+  it("mostra a hora no fuso do restaurante", () => {
+    expect(hora("2026-10-06T16:10:00Z", "America/Manaus")).toBe("12:10");
+    expect(hora("2026-10-06T16:10:00Z", "America/Sao_Paulo")).toBe("13:10");
   });
 
   it("só oferece o próximo passo da ordem de status", () => {

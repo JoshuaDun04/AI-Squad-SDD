@@ -218,3 +218,32 @@ describe("contatos LID persistidos", () => {
     assert.equal((await MapaContatos.abrir(dir, RID)).tamanho, 1);
   });
 });
+
+describe("revisão independente", () => {
+  it("JSON malformado ou grande demais responde 4xx, não 500 (REV-12)", async () => {
+    const server = createServer(criarApp(new SessoesFalsas(), TOKEN));
+    const url = await ouvir(server);
+    const h = { "X-Gateway-Token": TOKEN, "Content-Type": "application/json" };
+    assert.equal((await fetch(`${url}/mensagens`, { method: "POST", headers: h, body: "{nao json" })).status, 400);
+    const grande = JSON.stringify({ restaurante_id: RID, telefone: "5592991234567", texto: "x".repeat(40_000) });
+    assert.equal((await fetch(`${url}/mensagens`, { method: "POST", headers: h, body: grande })).status, 413);
+    server.close();
+  });
+
+  it("máscara profunda para logs do Baileys (REV-09)", async () => {
+    const { mascararProfundo } = await import("../src/normalizar.js");
+    const entrada = {
+      key: { remoteJid: "5592991234567@s.whatsapp.net", id: "3EB0ABC" },
+      jid: "123456789012345@lid",
+      lista: ["+5592991234567"],
+      err: new Error("falha 5592991234567"),
+      id: "aa60f693-52c9-48f6-940d-123456789012",
+      buffer: Buffer.from("abc"),
+    };
+    const texto = JSON.stringify(mascararProfundo(entrada));
+    assert.ok(!texto.includes("5592991234567") && !texto.includes("123456789012345"), texto);
+    assert.ok(texto.includes("*****-4567") && texto.includes("*****-2345"));
+    assert.ok(texto.includes("aa60f693-52c9-48f6-940d-123456789012"), "UUID preservado");
+    assert.ok(texto.includes("<3 bytes>"));
+  });
+});

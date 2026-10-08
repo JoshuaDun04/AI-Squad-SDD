@@ -4,14 +4,13 @@ import { ErroApi, type PedidoDetalhe, type PedidoFila } from "../api";
 import { useSessao } from "../App";
 import { brl, hora, PAGAMENTO } from "../formato";
 
-function hoje(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export default function Pedidos() {
-  const { api } = useSessao();
-  const [data, setData] = useState(hoje);
+  const { api, eu } = useSessao();
+  // "Hoje" vem da API, no fuso do restaurante (REV-16)
+  const [data, setData] = useState("");
+  useEffect(() => {
+    if (eu?.hoje && !data) setData(eu.hoje);
+  }, [eu, data]);
   const [lista, setLista] = useState<PedidoFila[] | null>(null);
   const [aberto, setAberto] = useState<PedidoDetalhe | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -19,7 +18,7 @@ export default function Pedidos() {
 
   const carregar = useCallback(async () => {
     try {
-      setLista(await api<PedidoFila[]>(`/pedidos?data=${data}`));
+      setLista(await api<PedidoFila[]>(data ? `/pedidos?data=${data}` : "/pedidos"));
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível carregar os pedidos.");
     }
@@ -102,7 +101,7 @@ export default function Pedidos() {
                     #{p.numero}
                   </button>
                 </td>
-                <td>{hora(p.criado_em)}</td>
+                <td>{hora(p.criado_em, eu?.fuso)}</td>
                 <td>{p.tipo === "entrega" ? "Entrega" : "Retirada"}</td>
                 <td>
                   <span className="selo" data-status={p.status}>
