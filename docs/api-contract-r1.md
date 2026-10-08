@@ -3,7 +3,7 @@
 - Especificador: ARC-01 / ENG-02 · Fonte: RTM.md, ADR-0001..0006
 - Convenções: JSON UTF-8; valores em centavos (`int` estrito); datas ISO 8601 com fuso; ids UUID; erros `{"erro": "<codigo>", "detalhe": "<texto>"}`
 - Autenticação do painel: `Authorization: Bearer <jwt>` (RT-02). Recurso de outro restaurante → **404** (RN-01).
-- Revisão Gate 3 (08/10/2026): acrescentados `/auth/eu`, `GET /pedidos` (histórico), `POST /whatsapp/desconectar`, `/saude`, 429 no login, 503 ao conectar com gateway fora, 409 ao apagar categoria com itens, convenção de `dia_semana`. Marcados com ★.
+- Revisão Gate 3 (08/10/2026): acrescentados `/auth/eu`, `GET /pedidos` (histórico), `POST /whatsapp/desconectar`, `/saude`, 429 no login, 503 ao conectar com gateway fora, 409 ao apagar categoria com itens, convenção de `dia_semana`. Marcados com ★. DEC-07 acrescentou `observacao` ao pedido.
 
 ## 1. API (`api`, FastAPI) — painel
 
@@ -19,9 +19,9 @@
 | `POST /whatsapp/conectar` | admin | `202 {status:"aguardando_qr"}` | 403, ★ 503 gateway indisponível | RF-06 |
 | ★ `POST /whatsapp/desconectar` | admin | `200 {status:"desconectado"}` | 403 | RF-06 |
 | `GET /whatsapp/status` | admin | `{status, qr_code_data_url?, atualizado_em?}` | 403 | RF-06 |
-| `GET /fila` | cozinha, atendente, admin | `[{pedido_id, numero, status, criado_em, tipo, itens:[{nome, quantidade}]}]` em ordem de `criado_em`; sem endereço nem telefone | 403 | RF-09, RT-05 |
+| `GET /fila` | cozinha, atendente, admin | `[{pedido_id, numero, status, criado_em, tipo, observacao, itens:[{nome, quantidade}]}]` em ordem de `criado_em`; sem endereço nem telefone | 403 | RF-09, RT-05 |
 | ★ `GET /pedidos?data=AAAA-MM-DD` | atendente, admin | pedidos do dia local (padrão: hoje no fuso do restaurante), com `total_centavos` e `pagamento` | 403 | RF-09 (histórico, BDD-COZ-02) |
-| `GET /pedidos/{id}` | atendente, admin | pedido completo, com cliente `{nome_perfil, telefone}` e endereço | 403 (cozinha), 404 | RF-09, RN-10 |
+| `GET /pedidos/{id}` | atendente, admin | pedido completo, com cliente `{nome_perfil, telefone}`, endereço e `observacao` | 403 (cozinha), 404 | RF-09, RN-10 |
 | `POST /pedidos/{id}/status` | cozinha, atendente, admin | `{novo_status}` → `200 {status}` | 403, 404, 409 transição inválida, ★ 422 status desconhecido ou "Cancelado" (use /cancelar) | RF-10, RN-09 |
 | `POST /pedidos/{id}/cancelar` | atendente, admin | `{motivo (3 a 300 caracteres)}` → `200 {status, motivo}` | 403, 404, 409 após Pronto, 422 sem motivo | RF-11, RN-09 |
 | ★ `GET /saude` | público | `{ok: true}` | — | RT-07 |
@@ -72,6 +72,6 @@ Implementações: `GatewayBaileys` (HTTP para `wa-gateway`) e `CanalEmMemoria` (
 
 ## 5. Modelo de dados (resumo)
 
-`restaurante(id, nome, fuso)` · `usuario(id, restaurante_id, email, senha_hash, papel, ativo)` · ★ `tentativa_login(id, chave, momento)` · `categoria(id, restaurante_id, nome, ordem, ativa)` · `item(id, restaurante_id, categoria_id, nome, descricao, preco_centavos, disponivel, ordem)` · `horario(restaurante_id, dia_semana, abre, fecha)` · `conexao_whatsapp(restaurante_id, status, ★ qr_code, atualizado_em)` · `cliente(id, restaurante_id, telefone, nome_perfil)` · `conversa(id, restaurante_id, cliente_id, estado, carrinho_json, dados_json, ultima_msg_em)` · `mensagem_processada(restaurante_id, mensagem_id)` · `pedido(id, restaurante_id, cliente_id, numero, data_local, status, tipo, endereco?, pagamento, troco_para_centavos?, total_centavos, motivo_cancelamento?, criado_em)` · `pedido_item(id, pedido_id, item_id, nome, preco_unitario_centavos, quantidade)`
+`restaurante(id, nome, fuso)` · `usuario(id, restaurante_id, email, senha_hash, papel, ativo)` · ★ `tentativa_login(id, chave, momento)` · `categoria(id, restaurante_id, nome, ordem, ativa)` · `item(id, restaurante_id, categoria_id, nome, descricao, preco_centavos, disponivel, ordem)` · `horario(restaurante_id, dia_semana, abre, fecha)` · `conexao_whatsapp(restaurante_id, status, ★ qr_code, atualizado_em)` · `cliente(id, restaurante_id, telefone, nome_perfil)` · `conversa(id, restaurante_id, cliente_id, estado, carrinho_json, dados_json, ultima_msg_em)` · `mensagem_processada(restaurante_id, mensagem_id)` · `pedido(id, restaurante_id, cliente_id, numero, data_local, status, tipo, endereco?, pagamento, troco_para_centavos?, total_centavos, motivo_cancelamento?, observacao? (≤140, migração 0002), criado_em)` · `pedido_item(id, pedido_id, item_id, nome, preco_unitario_centavos, quantidade)`
 
 Únicos: `usuario.email` global; `(restaurante_id, data_local, numero)` em pedido; `(restaurante_id, mensagem_id)`; `(restaurante_id, telefone)` em cliente; `(restaurante_id, cliente_id)` em conversa. Esquema criado pela migração Alembic `0001` (ADR-0006).

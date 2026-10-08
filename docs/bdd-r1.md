@@ -246,6 +246,33 @@ Cenário: Rejeição de confirmação com carrinho vazio
   Então o robô informa que o carrinho está vazio e volta às categorias
 ```
 
+## Observação do pedido (RF-08 · RN-11 · DEC-07)
+
+```gherkin
+@BDD-OBS-01 @principal @RF-08 @RN-11
+Cenário: Cliente adiciona observação antes de confirmar
+  Dado o robô mostrando o resumo do pedido
+  Quando o cliente escolhe "3 - Adicionar observação" e envia "tambaqui sem cebola"
+  Então o resumo mostra "Observação: tambaqui sem cebola"
+  Quando o cliente confirma
+  Então o pedido guarda a observação
+  E a fila da cozinha mostra a observação no ticket
+
+@BDD-OBS-02 @variacao @RF-08 @RN-11
+Cenário: Variação - cliente remove a observação
+  Dado um resumo com a observação "sem cebola"
+  Quando o cliente escolhe "3 - Alterar observação" e envia "0"
+  Então o resumo volta sem observação
+  E o pedido confirmado não tem observação
+
+@BDD-OBS-03 @negative @RN-11
+Cenário: Rejeição de observação com mais de 140 caracteres
+  Dado o robô pedindo a observação
+  Quando o cliente envia um texto de 141 caracteres
+  Então o robô responde que a observação pode ter no máximo 140 caracteres e pede de novo
+  E nenhum pedido é criado
+```
+
 ## Fila da cozinha e status (RF-09, RF-10 · RN-09 · RT-05)
 
 ```gherkin

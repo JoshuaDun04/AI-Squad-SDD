@@ -26,7 +26,7 @@ def test_cozinha_prepara_e_cliente_e_avisado(sabor, canal, relogio):
 
     fila = sabor.fila("cozinha")
     assert [p["numero"] for p in fila] == [1, 2]
-    assert set(fila[0]) == {"pedido_id", "numero", "status", "criado_em", "tipo", "itens"}  # sem endereço/telefone
+    assert set(fila[0]) == {"pedido_id", "numero", "status", "criado_em", "tipo", "observacao", "itens"}  # sem endereço/telefone
 
     antes = len(canal.para(TEL1))
     assert _status(sabor, p1["pedido_id"], "Em preparo").json() == {"status": "Em preparo"}

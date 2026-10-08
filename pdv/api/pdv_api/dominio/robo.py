@@ -20,6 +20,7 @@ QTD_MIN = 1
 QTD_MAX = 20  # RN-05
 ENDERECO_MIN = 10
 ENDERECO_MAX = 300
+OBSERVACAO_MAX = 140  # RN-11
 
 MSG_QTD_INVALIDA = "Envie um número de 1 a 20."
 MSG_OPCAO_INVALIDA = "Opção inválida."
@@ -27,6 +28,11 @@ MSG_ENDERECO = "Envie o endereço completo para entrega (rua, número, bairro e 
 MSG_EXPIROU = "Seu carrinho expirou depois de 30 minutos sem resposta. Vamos começar de novo."
 MSG_CARRINHO_VAZIO = "Seu carrinho está vazio."
 MSG_CANCELADO = "Pedido cancelado. Quando quiser, é só mandar uma mensagem."
+MSG_OBSERVACAO = (
+    "Escreva a observação para a cozinha, em até 140 caracteres (ex.: tambaqui sem cebola). "
+    "Envie 0 para ficar sem observação."
+)
+MSG_OBSERVACAO_LONGA = "A observação pode ter no máximo 140 caracteres."
 
 PAGAMENTOS = {"1": "pix", "2": "dinheiro", "3": "cartao"}
 ROTULO_PAGAMENTO = {"pix": "Pix", "dinheiro": "Dinheiro", "cartao": "Cartão na entrega/retirada"}
@@ -44,11 +50,19 @@ class Estado(StrEnum):
     PAGAMENTO = "PAGAMENTO"
     TROCO = "TROCO"
     CONFIRMACAO = "CONFIRMACAO"
+    OBSERVACAO = "OBSERVACAO"
 
 
 # Estados em que o cliente já está fechando o pedido; se o carrinho muda
 # (item ficou indisponível), voltamos ao carrinho para ele revisar.
-_ESTADOS_FECHAMENTO = {Estado.TIPO, Estado.ENDERECO, Estado.PAGAMENTO, Estado.TROCO, Estado.CONFIRMACAO}
+_ESTADOS_FECHAMENTO = {
+    Estado.TIPO,
+    Estado.ENDERECO,
+    Estado.PAGAMENTO,
+    Estado.TROCO,
+    Estado.CONFIRMACAO,
+    Estado.OBSERVACAO,
+}
 
 
 @dataclass(frozen=True)
@@ -102,6 +116,7 @@ class PedidoConfirmado:
     pagamento: str  # "pix" | "dinheiro" | "cartao"
     troco_para_centavos: int | None
     total_centavos: int
+    observacao: str | None = None
 
 
 @dataclass
@@ -178,8 +193,11 @@ def texto_resumo(conversa: Conversa, ctx: Contexto) -> str:
         troco = d.get("troco_para")
         pagamento += f" (troco para {formatar_brl(troco)})" if troco else " (sem troco)"
     linhas.append(f"Pagamento: {pagamento}")
+    if d.get("observacao"):
+        linhas.append(f"Observação: {d['observacao']}")
     linhas.append("")
-    linhas.append("1 - Confirmar pedido, 2 - Voltar ao carrinho, 0 - Cancelar")
+    acao_obs = "Alterar observação" if d.get("observacao") else "Adicionar observação"
+    linhas.append(f"1 - Confirmar pedido, 2 - Voltar ao carrinho, 3 - {acao_obs}, 0 - Cancelar")
     return "\n".join(linhas)
 
 
@@ -429,6 +447,9 @@ def _confirmacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[
     if op == 0:
         respostas.append(MSG_CANCELADO)
         return Resultado(Conversa(), respostas)
+    if op == 3:
+        conversa.estado = Estado.OBSERVACAO
+        return Resultado(conversa, [MSG_OBSERVACAO])
     if op != 1:
         return Resultado(conversa, [MSG_OPCAO_INVALIDA, texto_resumo(conversa, ctx)])
 
@@ -448,9 +469,26 @@ def _confirmacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[
         pagamento=d["pagamento"],
         troco_para_centavos=troco,
         total_centavos=total,
+        observacao=d.get("observacao"),
     )
     # A mensagem "Pedido #N recebido" é montada pelo serviço, que conhece o número.
     return Resultado(Conversa(), respostas, pedido)
+
+
+def _observacao(conversa: Conversa, texto: str, ctx: Contexto, respostas: list[str]) -> Resultado:
+    """RN-11: observação livre do pedido, opcional, até 140 caracteres."""
+    obs = " ".join(texto.split())
+    if obs == "0":
+        conversa.dados.pop("observacao", None)
+    elif not obs:
+        return Resultado(conversa, [MSG_OBSERVACAO])
+    elif len(obs) > OBSERVACAO_MAX:
+        return Resultado(conversa, [MSG_OBSERVACAO_LONGA, MSG_OBSERVACAO])
+    else:
+        conversa.dados["observacao"] = obs
+    conversa.estado = Estado.CONFIRMACAO
+    respostas.append(texto_resumo(conversa, ctx))
+    return Resultado(conversa, respostas)
 
 
 _HANDLERS = {
@@ -465,4 +503,5 @@ _HANDLERS = {
     Estado.PAGAMENTO: _pagamento,
     Estado.TROCO: _troco,
     Estado.CONFIRMACAO: _confirmacao,
+    Estado.OBSERVACAO: _observacao,
 }

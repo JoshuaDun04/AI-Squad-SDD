@@ -403,6 +403,13 @@ label.alternar {
   font-size: 1.3rem;
   margin-right: 0.15rem;
 }
+.ticket-obs {
+  margin: 0.2rem 0 0;
+  padding: 0.4rem 0.6rem;
+  background: #fbf1cf;
+  border-left: 4px solid var(--tucupi);
+  font-weight: 650;
+}
 .ticket-acao {
   margin-top: 0.4rem;
   background: var(--floresta);

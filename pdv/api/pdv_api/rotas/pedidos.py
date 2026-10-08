@@ -38,6 +38,7 @@ def _resumo(p: m.Pedido, itens: list[m.PedidoItem]) -> dict:
         "status": p.status,
         "criado_em": em_utc(p.criado_em).isoformat(),
         "tipo": p.tipo,
+        "observacao": p.observacao,
         "itens": [{"nome": i.nome, "quantidade": i.quantidade} for i in itens],
     }
 
@@ -89,6 +90,7 @@ def detalhe(
         "troco_para_centavos": pedido.troco_para_centavos,
         "total_centavos": pedido.total_centavos,
         "motivo_cancelamento": pedido.motivo_cancelamento,
+        "observacao": pedido.observacao,
         "criado_em": em_utc(pedido.criado_em).isoformat(),
         "cliente": {"nome_perfil": cliente.nome_perfil, "telefone": cliente.telefone} if cliente else None,
         "itens": [

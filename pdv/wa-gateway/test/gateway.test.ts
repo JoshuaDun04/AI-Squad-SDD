@@ -181,3 +181,40 @@ describe("cliente do webhook", () => {
     server.close();
   });
 });
+
+describe("contatos LID persistidos", () => {
+  it("lembra o JID LID entre reinícios e apaga ao desconectar", async () => {
+    const { mkdtemp, readFile, stat } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { MapaContatos } = await import("../src/contatos.js");
+    const dir = await mkdtemp(`${tmpdir()}/gw-`);
+
+    const m1 = await MapaContatos.abrir(dir, RID);
+    await m1.lembrar("123456789012345", "123456789012345@lid");
+    await m1.lembrar("5592991234567", "5592991234567@s.whatsapp.net"); // número normal não é gravado
+    assert.equal(m1.tamanho, 1);
+
+    const m2 = await MapaContatos.abrir(dir, RID); // "reinício"
+    assert.equal(m2.jid("123456789012345"), "123456789012345@lid");
+    assert.equal(m2.jid("5592991234567"), "5592991234567@s.whatsapp.net");
+    const arquivo = `${dir}/contatos/${RID}.json`;
+    assert.deepEqual(JSON.parse(await readFile(arquivo, "utf8")), { "123456789012345": "123456789012345@lid" });
+    assert.equal((await stat(arquivo)).mode & 0o777, 0o600);
+
+    await m2.apagar();
+    await assert.rejects(stat(arquivo));
+    assert.equal((await MapaContatos.abrir(dir, RID)).tamanho, 0);
+  });
+
+  it("ignora arquivo corrompido ou com entradas inválidas", async () => {
+    const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { MapaContatos } = await import("../src/contatos.js");
+    const dir = await mkdtemp(`${tmpdir()}/gw-`);
+    await mkdir(`${dir}/contatos`);
+    await writeFile(`${dir}/contatos/${RID}.json`, "{nao é json");
+    assert.equal((await MapaContatos.abrir(dir, RID)).tamanho, 0);
+    await writeFile(`${dir}/contatos/${RID}.json`, JSON.stringify({ "../x": "a@lid", "123456789": "123456789@s.whatsapp.net", "987654321": "987654321@lid" }));
+    assert.equal((await MapaContatos.abrir(dir, RID)).tamanho, 1);
+  });
+});

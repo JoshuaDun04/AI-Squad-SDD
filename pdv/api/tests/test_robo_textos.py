@@ -84,7 +84,7 @@ def test_resumo_retirada_pix():
         "Retirada no local\n"
         "Pagamento: Pix\n"
         "\n"
-        "1 - Confirmar pedido, 2 - Voltar ao carrinho, 0 - Cancelar"
+        "1 - Confirmar pedido, 2 - Voltar ao carrinho, 3 - Adicionar observação, 0 - Cancelar"
     )
 
 
@@ -229,3 +229,37 @@ def test_pix_ignora_troco_e_retirada_ignora_endereco_deixados_nos_dados():
     )
     p = robo.processar(conv, "1", CTX).pedido
     assert p.endereco is None and p.troco_para_centavos is None
+
+
+# ---------------------------------------------------------------- observação (RN-11, DEC-07)
+
+RESUMO = ("oi", "1", "1", "1", "3", "1", "1")
+
+
+def test_observacao_fluxo_puro():
+    pedir = rodar(*RESUMO, "3")
+    assert pedir.conversa.estado is robo.Estado.OBSERVACAO and pedir.respostas == [robo.MSG_OBSERVACAO]
+    com = rodar(*RESUMO, "3", "sem  cebola")
+    assert com.conversa.estado is robo.Estado.CONFIRMACAO
+    assert com.conversa.dados["observacao"] == "sem cebola"
+    assert "Pagamento: Pix\nObservação: sem cebola\n\n1 - Confirmar pedido, 2 - Voltar ao carrinho, 3 - Alterar observação, 0 - Cancelar" in com.texto
+    assert rodar(*RESUMO, "3", "sem  cebola", "1").pedido.observacao == "sem cebola"
+    assert rodar(*RESUMO, "1").pedido.observacao is None
+
+
+def test_observacao_zero_remove_e_limites():
+    sem = rodar(*RESUMO, "3", "sem cebola", "3", "0")
+    assert "observacao" not in sem.conversa.dados
+    assert rodar(*RESUMO, "3", "y" * 140).conversa.dados["observacao"] == "y" * 140
+    longa = rodar(*RESUMO, "3", "y" * 141)
+    assert longa.respostas == [robo.MSG_OBSERVACAO_LONGA, robo.MSG_OBSERVACAO]
+    assert longa.conversa.estado is robo.Estado.OBSERVACAO
+    vazia = rodar(*RESUMO, "3", "  ")
+    assert vazia.respostas == [robo.MSG_OBSERVACAO] and vazia.conversa.estado is robo.Estado.OBSERVACAO
+
+
+def test_item_indisponivel_durante_observacao_volta_ao_carrinho():
+    conv = rodar("oi", "1", "1", "1", "1", "2", "1", "1", "3", "1", "1", "3").conversa
+    so_bebidas = robo.Contexto("Sabor do Rio", (CTX.categorias[1],), aberto=True)
+    res = robo.processar(conv, "sem gelo", so_bebidas)
+    assert res.conversa.estado is robo.Estado.CARRINHO and res.pedido is None

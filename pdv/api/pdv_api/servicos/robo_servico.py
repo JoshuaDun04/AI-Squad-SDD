@@ -125,4 +125,5 @@ def _criar_pedido(
         pagamento=p.pagamento,
         troco_para_centavos=p.troco_para_centavos,
         total_centavos=p.total_centavos,
+        observacao=p.observacao,
     )

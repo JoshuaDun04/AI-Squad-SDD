@@ -13,5 +13,5 @@ O PM aceitou usar biblioteca não oficial (DEC-02, riscos RSK-01 e RSK-02) para 
 
 ## Implementação (Gate 3)
 
-- Baileys 7 (release candidate). Contatos que chegam só com identificador LID (sem número) são aceitos; o gateway guarda em memória o JID de resposta. Depois de reiniciar o gateway, avisos de status para esses contatos só voltam quando o cliente mandar nova mensagem.
+- Baileys 7 (release candidate). Contatos que chegam só com identificador LID (sem número) são aceitos; o gateway grava o par identificador → JID LID em `DATA_DIR/contatos/<restaurante_id>.json` (permissão 600, escrita atômica) para responder mesmo depois de reiniciar. O arquivo é apagado quando o número é desconectado. Contatos com número normal não são gravados.
 - O gateway repete o webhook em falha 5xx/rede (até 4 tentativas, espera exponencial); a deduplicação da API torna isso seguro.

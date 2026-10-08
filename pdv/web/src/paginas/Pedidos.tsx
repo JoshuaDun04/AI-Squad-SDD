@@ -139,6 +139,12 @@ export default function Pedidos() {
                 {aberto.pagamento === "dinheiro" &&
                   (aberto.troco_para_centavos ? `, troco para ${brl(aberto.troco_para_centavos)}` : ", sem troco")}
               </dd>
+              {aberto.observacao && (
+                <>
+                  <dt>Observação do cliente</dt>
+                  <dd>{aberto.observacao}</dd>
+                </>
+              )}
               {aberto.motivo_cancelamento && (
                 <>
                   <dt>Motivo do cancelamento</dt>

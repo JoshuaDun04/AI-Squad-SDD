@@ -54,6 +54,7 @@ export interface PedidoFila {
   status: StatusPedido;
   criado_em: string;
   tipo: "retirada" | "entrega";
+  observacao: string | null;
   itens: { nome: string; quantidade: number }[];
   total_centavos?: number;
   pagamento?: string;
@@ -70,6 +71,7 @@ export interface PedidoDetalhe {
   troco_para_centavos: number | null;
   total_centavos: number;
   motivo_cancelamento: string | null;
+  observacao: string | null;
   criado_em: string;
   cliente: { nome_perfil: string; telefone: string } | null;
   itens: { item_id: string; nome: string; preco_unitario_centavos: number; quantidade: number }[];

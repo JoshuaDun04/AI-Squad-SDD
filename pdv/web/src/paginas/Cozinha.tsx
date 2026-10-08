@@ -98,6 +98,7 @@ export default function Cozinha() {
                           </li>
                         ))}
                       </ul>
+                      {p.observacao && <p className="ticket-obs">{p.observacao}</p>}
                       {mostrarBotao && (
                         <button
                           className="ticket-acao"

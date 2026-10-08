@@ -18,6 +18,7 @@ import QRCode from "qrcode";
 
 import type { ClienteApi } from "./api.js";
 import { SessaoIndisponivel, type Sessoes } from "./app.js";
+import { MapaContatos } from "./contatos.js";
 import { mascarar, normalizar, type MensagemBaileys } from "./normalizar.js";
 
 const MAX_RECONEXOES = 5;
@@ -27,8 +28,8 @@ interface Estado {
   conectado: boolean;
   encerrando: boolean;
   reconexoes: number;
-  /** telefone (dígitos) → JID de resposta; cobre contatos que só chegam como LID */
-  jids: Map<string, string>;
+  /** contatos que só chegam como LID, persistidos em DATA_DIR/contatos */
+  contatos: MapaContatos;
 }
 
 export class SessoesBaileys implements Sessoes {
@@ -61,7 +62,13 @@ export class SessoesBaileys implements Sessoes {
       }
       return; // já está aberta (ou aguardando QR)
     }
-    const estado: Estado = atual ?? { socket: null, conectado: false, encerrando: false, reconexoes: 0, jids: new Map() };
+    const estado: Estado = atual ?? {
+      socket: null,
+      conectado: false,
+      encerrando: false,
+      reconexoes: 0,
+      contatos: await MapaContatos.abrir(this.dataDir, restauranteId),
+    };
     estado.encerrando = false;
     this.estados.set(restauranteId, estado);
     await this.abrir(restauranteId, estado);
@@ -111,7 +118,10 @@ export class SessoesBaileys implements Sessoes {
         const codigo = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
         const deslogado = codigo === DisconnectReason.loggedOut;
         if (estado.encerrando || deslogado || estado.reconexoes >= MAX_RECONEXOES) {
-          if (deslogado) await rm(pasta, { recursive: true, force: true });
+          if (deslogado) {
+            await rm(pasta, { recursive: true, force: true });
+            await estado.contatos.apagar();
+          }
           this.estados.delete(restauranteId);
           console.info(`sessão encerrada restaurante=${restauranteId} codigo=${codigo ?? "?"}`);
           await this.api.enviarEvento({ tipo: "status_conexao", restaurante_id: restauranteId, status: "desconectado" });
@@ -133,7 +143,7 @@ export class SessoesBaileys implements Sessoes {
       for (const bruta of messages) {
         const msg = normalizar(bruta as unknown as MensagemBaileys);
         if (!msg) continue;
-        estado.jids.set(msg.telefone, msg.jidResposta);
+        await estado.contatos.lembrar(msg.telefone, msg.jidResposta);
         const ok = await this.api.enviarEvento({
           tipo: "mensagem",
           restaurante_id: restauranteId,
@@ -160,12 +170,13 @@ export class SessoesBaileys implements Sessoes {
     }
     this.estados.delete(restauranteId);
     await rm(this.pasta(restauranteId), { recursive: true, force: true });
+    await (estado?.contatos ?? (await MapaContatos.abrir(this.dataDir, restauranteId))).apagar();
   }
 
   async enviar(restauranteId: string, telefone: string, texto: string): Promise<void> {
     const estado = this.estados.get(restauranteId);
     if (!estado?.socket || !estado.conectado) throw new SessaoIndisponivel();
-    const jid = estado.jids.get(telefone) ?? `${telefone}@s.whatsapp.net`;
+    const jid = estado.contatos.jid(telefone);
     await estado.socket.sendMessage(jid, { text: texto });
   }
 }

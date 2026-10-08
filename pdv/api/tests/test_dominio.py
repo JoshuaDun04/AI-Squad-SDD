@@ -268,7 +268,7 @@ def test_textos_de_menu():
     res = rodar("oi", "1", "1", "1", "3", "1", "2", "sem troco")
     resumo = res.respostas[-1]
     assert "Pagamento: Dinheiro (sem troco)" in resumo
-    assert resumo.endswith("1 - Confirmar pedido, 2 - Voltar ao carrinho, 0 - Cancelar")
+    assert resumo.endswith("1 - Confirmar pedido, 2 - Voltar ao carrinho, 3 - Adicionar observação, 0 - Cancelar")
     assert robo.texto_categorias(CTX, robo.Conversa(carrinho=[{"item_id": "t", "nome": "x", "quantidade": 1}])).endswith(
         "0 - Ver carrinho"
     )

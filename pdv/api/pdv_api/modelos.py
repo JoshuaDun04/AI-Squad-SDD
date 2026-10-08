@@ -140,6 +140,7 @@ class Pedido(Base):
     troco_para_centavos: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_centavos: Mapped[int] = mapped_column(Integer)
     motivo_cancelamento: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    observacao: Mapped[str | None] = mapped_column(String(140), nullable=True)  # RN-11
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
