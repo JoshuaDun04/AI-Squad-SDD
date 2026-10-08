@@ -34,7 +34,7 @@ O painel fica em `http://<ip-da-vps>:8080`. No primeiro acesso, use "Cadastre se
 3. **WhatsApp**: gere o QR code e leia com o celular do restaurante (Aparelhos conectados).
 4. **Equipe**: dê acesso à cozinha e aos atendentes.
 
-A API aplica as migrações do banco sozinha ao subir. Coloque um proxy com HTTPS (Caddy, Nginx) na frente da porta 8080 antes de usar em produção.
+A API aplica as migrações do banco sozinha ao subir. Coloque um proxy com HTTPS (Caddy, Nginx) na frente da porta 8080 antes de usar em produção, e informe a rede desse proxy em `PROXY_CONFIAVEL` no `.env` (ex.: `172.16.0.0/12` se o Caddy roda em Docker no mesmo servidor). Sem isso, o limite de tentativas de login enxerga todos os clientes com o IP do proxy.
 
 ## Desenvolver
 

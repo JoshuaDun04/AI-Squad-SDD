@@ -32,6 +32,8 @@ services:
       GATEWAY_TOKEN: ${GATEWAY_TOKEN:?defina GATEWAY_TOKEN (16+ caracteres) no .env}
       GATEWAY_URL: http://wa-gateway:3001
       CORS_ORIGENS: ${CORS_ORIGENS:-}
+      # Só redes privadas do Docker podem informar o IP do cliente (REV-19)
+      FORWARDED_ALLOW_IPS: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/saude')"]
       interval: 10s
@@ -57,6 +59,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      # Rede do proxy HTTPS na frente do painel (ex.: 172.16.0.0/12 se o Caddy roda em Docker no mesmo host)
+      PROXY_CONFIAVEL: ${PROXY_CONFIAVEL:-127.0.0.1/32}
     ports:
       - "${PORTA_PAINEL:-8080}:8080"
 

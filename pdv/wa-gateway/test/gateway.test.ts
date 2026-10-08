@@ -233,7 +233,7 @@ describe("revisão independente", () => {
   it("máscara profunda para logs do Baileys (REV-09)", async () => {
     const { mascararProfundo } = await import("../src/normalizar.js");
     const entrada = {
-      key: { remoteJid: "5592991234567@s.whatsapp.net", id: "3EB0ABC" },
+      key: { remoteJid: "5592991234567@s.whatsapp.net", id: "3EB0ABC", pedido: "20261008" },
       jid: "123456789012345@lid",
       lista: ["+5592991234567"],
       err: new Error("falha 5592991234567"),
@@ -245,5 +245,6 @@ describe("revisão independente", () => {
     assert.ok(texto.includes("*****-4567") && texto.includes("*****-2345"));
     assert.ok(texto.includes("aa60f693-52c9-48f6-940d-123456789012"), "UUID preservado");
     assert.ok(texto.includes("<3 bytes>"));
+    assert.ok(texto.includes("20261008"), "datas de 8 dígitos ficam legíveis");
   });
 });

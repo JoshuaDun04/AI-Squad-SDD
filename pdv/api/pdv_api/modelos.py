@@ -108,7 +108,10 @@ class Cliente(Base):
 
 class Conversa(Base):
     __tablename__ = "conversa"
-    __table_args__ = (UniqueConstraint("restaurante_id", "cliente_id", name="uq_conversa_cliente"),)
+    __table_args__ = (
+        UniqueConstraint("restaurante_id", "cliente_id", name="uq_conversa_cliente"),
+        Index("ix_conversa_ultima_msg", "restaurante_id", "ultima_msg_em"),  # limpeza (REV-22)
+    )
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
     restaurante_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("restaurante.id"), index=True)
     cliente_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cliente.id"))

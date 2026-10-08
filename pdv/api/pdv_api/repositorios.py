@@ -252,13 +252,23 @@ class RepoConversas(_RepoDoRestaurante):
 
     def limpar_abandonadas(self, antes_de: datetime) -> int:
         """RN-10: carrinho, endereço e observação de conversas paradas não ficam guardados (REV-17)."""
-        res = self.s.execute(
-            update(m.Conversa)
+        # Até 100 por vez e pulando conversas travadas por mensagens em andamento (REV-22)
+        alvo = (
+            select(m.Conversa.id)
             .where(
                 m.Conversa.restaurante_id == self.rid,
                 m.Conversa.ultima_msg_em < antes_de,
                 m.Conversa.estado != "INICIO",
             )
+            .limit(100)
+            .with_for_update(skip_locked=True)
+        )
+        ids = list(self.s.scalars(alvo))
+        if not ids:
+            return 0
+        res = self.s.execute(
+            update(m.Conversa)
+            .where(m.Conversa.restaurante_id == self.rid, m.Conversa.id.in_(ids))
             .values(estado="INICIO", carrinho_json=[], dados_json={})
         )
         return res.rowcount or 0

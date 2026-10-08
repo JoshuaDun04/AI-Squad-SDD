@@ -10,9 +10,10 @@ from __future__ import annotations
 import logging
 import re
 
-# 8 a 15 dígitos (número ou identificador LID), sem encostar em letras, dígitos ou hífen:
-# assim trechos de UUID e datas não são confundidos com telefone (REV-11).
-_RE_TELEFONE = re.compile(r"(?<![\w-])\+?\d{8,15}(?![\w-])")
+# 10 a 15 dígitos: telefone com DDD (10-11), com país (12-13) ou identificador LID (14-15).
+# Não encosta em letras, dígitos ou hífen, para não pegar trechos de UUID (REV-11);
+# datas como 20261008 (8 dígitos) ficam legíveis (REV-21).
+_RE_TELEFONE = re.compile(r"(?<![\w-])\+?\d{10,15}(?![\w-])")
 
 
 def mascarar_telefone(telefone: str) -> str:

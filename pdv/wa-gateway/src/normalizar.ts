@@ -93,8 +93,8 @@ export function mascarar(telefone: string): string {
   return d.length >= 4 ? `*****-${d.slice(-4)}` : "*****";
 }
 
-/** Telefone, LID ou JID: 8 a 15 dígitos sem encostar em letra, dígito ou hífen. */
-const RE_NUMERO = /(?<![\w-])\+?\d{8,15}(?![\w-])/g;
+/** Telefone com DDD, com país ou LID: 10 a 15 dígitos sem encostar em letra, dígito ou hífen. */
+const RE_NUMERO = /(?<![\w-])\+?\d{10,15}(?![\w-])/g;
 
 /**
  * Mascara números de telefone em qualquer valor que vá para o log do Baileys (REV-09).

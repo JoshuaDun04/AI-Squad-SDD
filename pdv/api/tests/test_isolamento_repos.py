@@ -134,3 +134,28 @@ def test_numeracao_independente_por_restaurante(dois, fabrica):
         assert RepoPedidos(s, dois["a"])._proximo_numero(hoje) == 2
         assert RepoPedidos(s, dois["b"])._proximo_numero(hoje) == 2
         s.rollback()
+
+
+@pytest.mark.bdd("BDD-ISO-02")
+def test_cardapio_ignora_item_de_outro_restaurante_mesmo_com_dado_inconsistente(dois, fabrica, sabor):
+    """REV-20: o filtro dos itens protege mesmo se um item de B apontar para uma categoria de A."""
+    with fabrica() as s:
+        s.add(m.Item(restaurante_id=dois["b"], categoria_id=uuid.UUID(sabor.categorias["Peixes"]),
+                     nome="Infiltrado", preco_centavos=100, disponivel=True))
+        s.commit()
+        nomes = {i.nome for _, itens in RepoCardapio(s, dois["a"]).cardapio_disponivel() for i in itens}
+        assert "Infiltrado" not in nomes
+
+
+@pytest.mark.bdd("BDD-ISO-01")
+def test_conversa_travada_nao_pega_conversa_de_outro_restaurante(dois, fabrica):
+    """REV-20: mesmo com uma conversa de B apontando para um cliente de A, A recebe a própria."""
+    with fabrica() as s:
+        cliente_a = RepoConversas(s, dois["a"]).cliente("5592900001234", "Ana")
+        s.commit()
+        s.add(m.Conversa(restaurante_id=dois["b"], cliente_id=cliente_a.id, estado="CARRINHO",
+                         carrinho_json=[{"item_id": "x", "nome": "x", "quantidade": 1}], dados_json={}))
+        s.commit()
+        conversa = RepoConversas(s, dois["a"]).conversa_travada(cliente_a.id)
+        assert conversa.restaurante_id == dois["a"] and conversa.estado == "INICIO"
+        s.rollback()

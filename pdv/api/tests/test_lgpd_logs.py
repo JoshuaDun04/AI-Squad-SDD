@@ -94,3 +94,9 @@ def test_erro_interno_nao_vaza_dados_no_log(sabor, caplog, monkeypatch):
     assert r.status_code == 500 and r.json() == {"erro": "interno", "detalhe": "erro interno"}
     assert "5592977776666" not in caplog.text and "Fulano Secreto" not in caplog.text
     assert "erro interno RuntimeError em POST /canal/webhook" in caplog.text
+
+
+def test_mascara_nao_apaga_numeros_curtos():
+    """REV-21: datas e números de pedido continuam legíveis; telefones de 10 a 15 dígitos não."""
+    assert mascarar_texto("pedido 20261008 nº 123") == "pedido 20261008 nº 123"
+    assert mascarar_texto("ddd 9299123456 lid 123456789012345") == "ddd *****-3456 lid *****-2345"
