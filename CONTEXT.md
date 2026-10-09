@@ -54,3 +54,31 @@ Porta do domínio para enviar e receber mensagens de clientes; hoje implementada
 
 **Conexão WhatsApp**:
 Vínculo entre um número de WhatsApp e um restaurante, criado pela leitura de QR code.
+
+### Estoque (R2)
+
+**Ingrediente**:
+Insumo controlado no estoque, com uma unidade base (g, ml ou un) e saldo inteiro nessa unidade.
+_Avoid_: Insumo, matéria-prima, produto
+
+**Ficha técnica**:
+Lista de ingredientes e quantidades que um item, uma opção de variação ou um adicional consome.
+_Avoid_: Receita (no código), composição
+
+**Movimentação**:
+Registro imutável que muda o saldo de um ingrediente: saldo inicial, entrada, ajuste, baixa de pedido ou estorno.
+_Avoid_: Lançamento, transação
+
+**Baixa**:
+Movimentação negativa criada automaticamente pela confirmação de um pedido.
+
+**Estorno**:
+Movimentação que devolve ao estoque a baixa de um pedido cancelado antes de entrar em preparo.
+
+**Variação**:
+Escolha obrigatória de um item, com preço e ficha próprios (ex.: tamanho 300 ml ou 500 ml).
+_Avoid_: Versão, tipo
+
+**Adicional**:
+Acréscimo opcional a um item, com preço e ficha somados à linha (ex.: queijo extra).
+_Avoid_: Extra, complemento, opcional

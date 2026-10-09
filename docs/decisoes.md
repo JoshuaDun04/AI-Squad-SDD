@@ -14,3 +14,13 @@ DEC-01..DEC-06 foram tomadas antes deste repositório existir e estão citadas n
 - Observação por item obrigaria a separar linhas iguais com observações diferentes, o que quebra a regra de somar quantidades (BDD-ROB-03), e se sobrepõe às variações da R2.
 
 **Consequências.** Nova regra RN-11, cenários BDD-OBS-01..03, coluna `pedido.observacao` (migração 0002) e campo `observacao` em `GET /fila` e `GET /pedidos/{id}`. A observação nunca vai para log, porque o cliente pode escrever dado de saúde (ex.: alergia).
+
+## DEC-08 — Variações e adicionais entram na R2, junto com o estoque
+
+- Data: 08/10/2026 · Decisor: PM (delegou a recomendação à squad) · Origem: DEC-07, PRD §8 ("sem variações na R1")
+
+**Decisão.** A R2 inclui, além de estoque e ficha técnica, um grupo de variação obrigatório por item (ex.: tamanho), adicionais opcionais e observação por item.
+
+**Por quê.** A ficha técnica precisa saber o que foi vendido de fato: um suco de 500 ml gasta mais polpa que um de 300 ml, e um adicional de queijo baixa queijo. Fazer o estoque antes das variações obrigaria a refazer a ficha da linha do pedido logo em seguida. A observação por item foi adiada da R1 para cá pela DEC-07.
+
+**Consequências.** Escopo maior que o PRD original para a R2 (OBJ-07, RN-19..RN-22, RF-19, RF-20). Fica de fora a variação com mais de um grupo por item. O PM pode recusar ao aprovar o Gate 2 da R2 (pergunta 3 da RTM-r2); nesse caso, as variações viram uma fatia própria logo depois.

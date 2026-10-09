@@ -1,7 +1,7 @@
 # RTM — PDV Restaurantes · Fatia R1
 
 - Objetivo: OBJ-PDV-001 · Fonte: PRD-gate1.md (aprovado no Gate 1), DEC-01..07 ([decisoes.md](decisoes.md)), ADR-0001..0006
-- Estado das evidências: **executadas em 08/10/2026 sobre código novo** (o projeto foi reconstruído do zero; a evidência anterior a esta data não tinha código correspondente e foi descartada). Detalhes em [parecer-gate4.md](parecer-gate4.md).
+- Estado das evidências: **executadas em 08/10/2026 sobre código novo, após revisão independente** (o projeto foi reconstruído do zero; a evidência anterior a esta data não tinha código correspondente e foi descartada). Detalhes em [parecer-gate4.md](parecer-gate4.md).
 - Cenários: [bdd-r1.md](bdd-r1.md) · Contratos: [api-contract-r1.md](api-contract-r1.md) · Glossário: [CONTEXT.md](../CONTEXT.md)
 - Verificação automática: `python pdv/api/scripts/verificar_rtm.py` (cobertura BDD + regras da ADR-0001)
 
@@ -62,17 +62,17 @@ Arquivos de teste em `pdv/api/tests/`; cada teste leva `@pytest.mark.bdd("<ID>")
 
 | ID Dor | ID Objetivo | ID Requisito Negócio | ID Requisito Funcional | ID Requisito Técnico | Cobertura BDD (Tríade) | Evidência de verificação (08/10/2026) |
 |---|---|---|---|---|---|---|
-| DN-06 | OBJ-06 | RN-01 | RF-01, RF-02, RF-03 | RT-01, RT-02 | BDD-AUT-01 @principal; BDD-AUT-02 @variacao; BDD-AUT-03, BDD-ISO-01, BDD-ISO-02, BDD-ISO-03 @negative | ✅ test_auth.py, test_isolamento.py, test_config.py |
+| DN-06 | OBJ-06 | RN-01 | RF-01, RF-02, RF-03 | RT-01, RT-02 | BDD-AUT-01 @principal; BDD-AUT-02 @variacao; BDD-AUT-03, BDD-ISO-01, BDD-ISO-02, BDD-ISO-03 @negative | ✅ test_auth.py, test_isolamento.py, test_isolamento_repos.py, test_config.py |
 | DN-01 | OBJ-01 | RN-01, RN-02, RN-04 | RF-04 | RT-01 | BDD-CAR-01 @principal; BDD-CAR-02 @variacao; BDD-CAR-03, BDD-CAR-04 @negative | ✅ test_cardapio.py, test_dominio.py |
 | DN-01 | OBJ-01 | RN-07 | RF-05 | RT-01 | BDD-HOR-01 @principal; BDD-HOR-02 @variacao; BDD-HOR-03 @negative | ✅ test_horario.py, test_dominio.py |
 | DN-06 | OBJ-06 | RN-01 | RF-06 | RT-03 | BDD-WA-01 @principal; BDD-WA-02 @variacao; BDD-WA-03, BDD-WA-04 @negative | ✅ test_canal.py; gateway: test/gateway.test.ts |
-| DN-01 | OBJ-01 | RN-04, RN-05, RN-06 | RF-07 | RT-03, RT-04 | BDD-ROB-01 @principal; BDD-ROB-02, BDD-ROB-03 @variacao; BDD-ROB-04, BDD-ROB-05, BDD-ROB-06 @negative | ✅ test_robo.py, test_dominio.py |
-| DN-01 | OBJ-01 | RN-02, RN-03, RN-07, RN-08, RN-10 | RF-08 | RT-04, RT-06, RT-08 | BDD-PED-01 @principal; BDD-PED-02, BDD-PED-03 @variacao; BDD-PED-04, BDD-PED-05, BDD-PED-06 @negative | ✅ test_pedido.py, test_lgpd_logs.py |
+| DN-01 | OBJ-01 | RN-04, RN-05, RN-06 | RF-07 | RT-03, RT-04 | BDD-ROB-01 @principal; BDD-ROB-02, BDD-ROB-03 @variacao; BDD-ROB-04, BDD-ROB-05, BDD-ROB-06, BDD-ROB-07 @negative | ✅ test_robo.py, test_robo_textos.py, test_dominio.py, test_concorrencia.py |
+| DN-01 | OBJ-01 | RN-02, RN-03, RN-07, RN-08, RN-10 | RF-08 | RT-04, RT-06, RT-08 | BDD-PED-01 @principal; BDD-PED-02, BDD-PED-03 @variacao; BDD-PED-04, BDD-PED-05, BDD-PED-06, BDD-PED-07 @negative | ✅ test_pedido.py, test_lgpd_logs.py, test_concorrencia.py |
 | DN-02 | OBJ-02 | RN-01, RN-09 | RF-09, RF-10 | RT-05 | BDD-COZ-01 @principal; BDD-COZ-02 @variacao; BDD-COZ-03, BDD-COZ-04 @negative | ✅ test_cozinha.py; e2e Playwright (fila em < 5 s) |
 | DN-02 | OBJ-02 | RN-09 | RF-11 | RT-03 | BDD-CAN-01 @principal; BDD-CAN-02 @variacao; BDD-CAN-03 @negative | ✅ test_cozinha.py; e2e Playwright |
 | DN-01 | OBJ-01 | RN-10 | RF-08 | RT-06 | BDD-LGPD-01 @principal; BDD-LGPD-02 @negative | ✅ test_lgpd_logs.py; varredura dos logs reais do e2e |
 | DN-01 | OBJ-01, OBJ-02 | RN-11, RN-10 | RF-08, RF-09 | RT-04 | BDD-OBS-01 @principal; BDD-OBS-02 @variacao; BDD-OBS-03 @negative | ✅ test_observacao.py, test_robo_textos.py |
-| DN-06 | OBJ-06 | — | — | RT-07 | — (infra) | ⚠️ compose validado; imagens não construídas neste ambiente (registro Docker bloqueado) |
+| DN-06 | OBJ-06 | — | — | RT-07 | — (infra) | ⚠️ compose validado e nginx real testado localmente; imagens construídas só no CI (job `stack`), não neste ambiente |
 
 ## Fora da R1 (rastreados para R2–R4)
 

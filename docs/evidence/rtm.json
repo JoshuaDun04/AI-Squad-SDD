@@ -1,8 +1,8 @@
 {
-  "cenarios": 38,
-  "cenarios_cobertos": 38,
-  "negativos": 19,
-  "negativos_cobertos": 19,
+  "cenarios": 43,
+  "cenarios_cobertos": 43,
+  "negativos": 22,
+  "negativos_cobertos": 22,
   "sem_teste": [],
   "marcadores_orfaos": [],
   "violacoes_rotas": [],
@@ -39,7 +39,8 @@
     ],
     "BDD-CAR-02": [
       "test_cardapio.py::test_item_desativado_some_do_robo_mas_fica_no_painel",
-      "test_cardapio.py::test_categoria_sem_itens_disponiveis_nao_aparece_no_robo"
+      "test_cardapio.py::test_categoria_sem_itens_disponiveis_nao_aparece_no_robo",
+      "test_cardapio.py::test_categoria_desativada_some_do_robo"
     ],
     "BDD-CAR-03": [
       "test_cardapio.py::test_preco_invalido_retorna_422_e_nao_salva",
@@ -79,16 +80,25 @@
     ],
     "BDD-ISO-01": [
       "test_isolamento.py::test_pedido_de_outro_restaurante_retorna_404_sem_vazar_campos",
-      "test_isolamento.py::test_alterar_pedido_de_outro_restaurante_retorna_404"
+      "test_isolamento.py::test_alterar_pedido_de_outro_restaurante_retorna_404",
+      "test_isolamento_repos.py::test_repo_pedidos",
+      "test_isolamento_repos.py::test_repo_conversas",
+      "test_isolamento_repos.py::test_limpeza_de_conversas_so_no_proprio_restaurante",
+      "test_isolamento_repos.py::test_conversa_travada_nao_pega_conversa_de_outro_restaurante"
     ],
     "BDD-ISO-02": [
       "test_isolamento.py::test_alterar_item_de_outro_restaurante_retorna_404_e_preco_nao_muda",
       "test_isolamento.py::test_categoria_de_outro_restaurante_inacessivel",
-      "test_isolamento.py::test_listagens_so_trazem_o_proprio_restaurante"
+      "test_isolamento.py::test_listagens_so_trazem_o_proprio_restaurante",
+      "test_isolamento_repos.py::test_repo_cardapio",
+      "test_isolamento_repos.py::test_repo_usuarios",
+      "test_isolamento_repos.py::test_repo_horarios_e_conexao",
+      "test_isolamento_repos.py::test_cardapio_ignora_item_de_outro_restaurante_mesmo_com_dado_inconsistente"
     ],
     "BDD-ISO-03": [
       "test_isolamento.py::test_fila_da_cozinha_nao_mistura_restaurantes",
-      "test_isolamento.py::test_mensagem_de_whatsapp_so_ve_cardapio_do_proprio_restaurante"
+      "test_isolamento.py::test_mensagem_de_whatsapp_so_ve_cardapio_do_proprio_restaurante",
+      "test_isolamento_repos.py::test_numeracao_independente_por_restaurante"
     ],
     "BDD-LGPD-01": [
       "test_lgpd_logs.py::test_pedido_de_retirada_guarda_so_o_necessario"
@@ -96,7 +106,19 @@
     "BDD-LGPD-02": [
       "test_lgpd_logs.py::test_logs_nao_contem_telefone_nem_endereco",
       "test_lgpd_logs.py::test_filtro_mascara_telefone_que_escapar_para_o_log",
-      "test_lgpd_logs.py::test_mascarar_telefone"
+      "test_lgpd_logs.py::test_mascarar_telefone",
+      "test_lgpd_logs.py::test_erro_interno_nao_vaza_dados_no_log"
+    ],
+    "BDD-OBS-01": [
+      "test_observacao.py::test_observacao_vai_para_o_pedido_e_para_a_fila"
+    ],
+    "BDD-OBS-02": [
+      "test_observacao.py::test_cliente_remove_a_observacao",
+      "test_observacao.py::test_pedido_sem_observacao_por_padrao"
+    ],
+    "BDD-OBS-03": [
+      "test_observacao.py::test_observacao_longa_e_recusada",
+      "test_observacao.py::test_observacao_vazia_pede_de_novo"
     ],
     "BDD-PED-01": [
       "test_pedido.py::test_retirada_com_pix_cria_pedido"
@@ -107,8 +129,7 @@
     ],
     "BDD-PED-03": [
       "test_pedido.py::test_numeracao_diaria_reinicia_a_meia_noite_local",
-      "test_pedido.py::test_preco_congelado_apos_mudanca",
-      "test_pedido.py::test_preco_vale_o_do_momento_da_confirmacao"
+      "test_pedido.py::test_preco_congelado_apos_mudanca"
     ],
     "BDD-PED-04": [
       "test_pedido.py::test_troco_menor_que_total_e_recusado"
@@ -118,6 +139,9 @@
     ],
     "BDD-PED-06": [
       "test_pedido.py::test_finalizar_quando_carrinho_esvaziou"
+    ],
+    "BDD-PED-07": [
+      "test_pedido.py::test_preco_mudou_depois_do_resumo_mostra_resumo_de_novo"
     ],
     "BDD-ROB-01": [
       "test_robo.py::test_cliente_navega_e_adiciona_item"
@@ -140,6 +164,11 @@
     "BDD-ROB-06": [
       "test_robo.py::test_carrinho_expira_apos_30_minutos",
       "test_robo.py::test_exatamente_30_minutos_ainda_nao_expira"
+    ],
+    "BDD-ROB-07": [
+      "test_robo.py::test_item_escolhido_por_numero_de_menu_antigo",
+      "test_robo.py::test_categoria_nova_nao_desloca_a_escolha",
+      "test_robo.py::test_remover_usa_a_lista_mostrada"
     ],
     "BDD-WA-01": [
       "test_canal.py::test_admin_conecta_pelo_qr_code",
