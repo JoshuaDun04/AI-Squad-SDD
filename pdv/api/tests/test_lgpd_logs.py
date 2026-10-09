@@ -100,3 +100,18 @@ def test_mascara_nao_apaga_numeros_curtos():
     """REV-21: datas e números de pedido continuam legíveis; telefones de 10 a 15 dígitos não."""
     assert mascarar_texto("pedido 20261008 nº 123") == "pedido 20261008 nº 123"
     assert mascarar_texto("ddd 9299123456 lid 123456789012345") == "ddd *****-3456 lid *****-2345"
+
+
+@pytest.mark.parametrize(
+    "texto,esperado",
+    [
+        ("tel +55 92 99123-4567 ok", "tel *****-4567 ok"),
+        ("(92) 99123-4567", "*****-4567"),
+        ("fone 99123-4567", "fone *****-4567"),
+        ("fixo 3234-1234", "fixo *****-1234"),
+        ("hora 12:30 data 2026-10-08", "hora 12:30 data 2026-10-08"),
+    ],
+)
+def test_mascara_telefones_formatados(texto, esperado):
+    """REV-23: segunda barreira também para telefone formatado."""
+    assert mascarar_texto(texto) == esperado

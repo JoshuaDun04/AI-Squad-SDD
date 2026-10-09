@@ -252,7 +252,8 @@ class RepoConversas(_RepoDoRestaurante):
 
     def limpar_abandonadas(self, antes_de: datetime) -> int:
         """RN-10: carrinho, endereço e observação de conversas paradas não ficam guardados (REV-17)."""
-        # Até 100 por vez e pulando conversas travadas por mensagens em andamento (REV-22)
+        # Lotes de 100 pulando conversas travadas por mensagens em andamento (REV-22);
+        # o chamador repete enquanto o lote vier cheio (REV-25)
         alvo = (
             select(m.Conversa.id)
             .where(

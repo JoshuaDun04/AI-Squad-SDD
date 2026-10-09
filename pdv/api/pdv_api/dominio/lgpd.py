@@ -13,7 +13,11 @@ import re
 # 10 a 15 dígitos: telefone com DDD (10-11), com país (12-13) ou identificador LID (14-15).
 # Não encosta em letras, dígitos ou hífen, para não pegar trechos de UUID (REV-11);
 # datas como 20261008 (8 dígitos) ficam legíveis (REV-21).
-_RE_TELEFONE = re.compile(r"(?<![\w-])\+?\d{10,15}(?![\w-])")
+_RE_TELEFONE = re.compile(
+    r"(?<![\w-])\+?\d{10,15}(?![\w-])"
+    # formatado: +55 92 99123-4567, (92) 99123-4567, 99123-4567, 3234-1234
+    r"|(?<![\w-])(?:\+?\d{2}\s?)?(?:\(?\d{2}\)?\s?)?\d{4,5}-\d{4}(?![\w-])"
+)
 
 
 def mascarar_telefone(telefone: str) -> str:

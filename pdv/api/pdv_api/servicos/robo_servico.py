@@ -110,11 +110,12 @@ def processar_mensagem(
     if respostas:
         enviar_sem_falhar(canal, rid, msg.telefone, "\n\n".join(respostas))
 
-    # Transação própria e curta, sem segurar outras travas
-    if conversas.limpar_abandonadas(agora - RETENCAO_CONVERSA):
+    # Transações próprias e curtas, sem segurar outras travas; repete enquanto o lote vier cheio
+    for _ in range(20):
+        limpas = conversas.limpar_abandonadas(agora - RETENCAO_CONVERSA)
         sessao.commit()
-    else:
-        sessao.rollback()
+        if limpas < 100:
+            break
     return pedido
 
 
