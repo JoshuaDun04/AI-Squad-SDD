@@ -37,3 +37,15 @@ DEC-01..DEC-06 foram tomadas antes deste repositório existir e estão citadas n
 5. **Até onde vai a R2:** segue o previsto no release train do PRD (§3). A R2 foi além do Gate 1, a pedido do PM, e encerra com este Gate 2 aprovado. Gate 3 (implementação) e Gate 4 (validação) da R2 abrem só quando o PM iniciar um novo objetivo para ela.
 
 **Consequências.** Todas as hipóteses [H] da RTM-r2 viram [C]. RN-23, RF-14, BDD-ENT-01, BDD-ENT-03 e o contrato de `POST /estoque/entradas` passam a aceitar só o admin. ADR-0007..0010 passam de "proposed" para "accepted". Com a R1 no Gate 4 e R2 a R4 especificadas, o release train do OBJ-PDV-001 está cumprido; o que resta da R1 é operacional (build e WhatsApp real na VPS).
+
+## DEC-10 — Preparação para o piloto em campo
+
+- Data: 11/10/2026 · Decisor: PM ("resolver tudo o que puder para começar os testes em campo") · Origem: próximos passos após o Gate 4
+
+**Decisões.**
+1. **Horários de status no pedido (RT-14):** o pedido passa a guardar a hora de cada mudança (`em_preparo_em`, `pronto_em`, `finalizado_em`, `cancelado_em`; migração 0005). Sem isso, o piloto não mede o tempo até o preparo nem o tempo de preparo. Não há dado pessoal novo.
+2. **Kit de produção:** Caddy na frente do painel com HTTPS automático (`docker-compose.prod.yml`, `deploy/Caddyfile`) e um script único de operação (`deploy/pdv.sh`: instalar, atualizar, verificar, backup, restaurar, relatório). O painel deixa de expor porta própria na internet.
+3. **Verificação contínua:** o script confere serviços, HTTPS, webhook fechado, conexão do WhatsApp, telefone em log (RN-10) e disco, e pode avisar no celular pelo ntfy.
+4. **Plano do piloto:** ensaio interno com 15 testes no WhatsApp real, depois duas semanas com um restaurante, com métricas e critérios de parada ([plano-piloto.md](operacao/plano-piloto.md)). Os alvos das métricas são hipóteses para o PM confirmar.
+
+**Consequências.** Novo job `producao` no CI (instala como numa VPS, verifica, faz backup, apaga tudo e restaura). Actions do CI atualizadas para v7 (Node 24).

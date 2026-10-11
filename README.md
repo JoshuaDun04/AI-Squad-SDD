@@ -18,23 +18,19 @@ pdv/
 
 ## Subir numa VPS
 
-Requisitos: Docker com Compose v2, 1 GB de RAM livre, um número de WhatsApp dedicado ao restaurante.
+Requisitos: Ubuntu 24.04 ou Debian 12 com Docker, 2 GB de RAM, portas 80 e 443 abertas, e um número de WhatsApp dedicado ao restaurante. Domínio próprio é opcional: `<ip-com-hífens>.sslip.io` funciona com HTTPS.
 
 ```bash
 cd pdv
-cp .env.example .env
-# troque os três segredos do .env (openssl rand -hex 32 gera um bom valor)
-docker compose up -d --build
+./deploy/pdv.sh instalar        # pergunta o domínio, gera o .env, sobe tudo com HTTPS (Caddy)
+./deploy/pdv.sh verificar       # serviços, HTTPS, webhook fechado, WhatsApp, logs sem telefone, disco
 ```
 
-O painel fica em `http://<ip-da-vps>:8080`. No primeiro acesso, use "Cadastre seu restaurante". Depois:
+O passo a passo completo, com firewall, backup diário e alerta no celular, está em [docs/operacao/implantacao-vps.md](docs/operacao/implantacao-vps.md). O plano do piloto com um restaurante está em [docs/operacao/plano-piloto.md](docs/operacao/plano-piloto.md).
 
-1. **Cardápio**: crie categorias e itens.
-2. **Horários**: marque os dias e horários de funcionamento.
-3. **WhatsApp**: gere o QR code e leia com o celular do restaurante (Aparelhos conectados).
-4. **Equipe**: dê acesso à cozinha e aos atendentes.
+Outros comandos: `atualizar`, `backup`, `restaurar`, `relatorio [dias]`, `logs [serviço]`.
 
-A API aplica as migrações do banco sozinha ao subir. Coloque um proxy com HTTPS (Caddy, Nginx) na frente da porta 8080 antes de usar em produção, e informe a rede desse proxy em `PROXY_CONFIAVEL` no `.env` (ex.: `172.16.0.0/12` se o Caddy roda em Docker no mesmo servidor). Sem isso, o limite de tentativas de login enxerga todos os clientes com o IP do proxy.
+Sem o kit de produção (só para testar numa rede local): `cp .env.example .env`, troque os segredos e rode `docker compose up -d --build`; o painel fica em `http://<ip>:8080`, sem HTTPS.
 
 ## Desenvolver
 

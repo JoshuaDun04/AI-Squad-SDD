@@ -92,6 +92,15 @@ def detalhe(
         "motivo_cancelamento": pedido.motivo_cancelamento,
         "observacao": pedido.observacao,
         "criado_em": em_utc(pedido.criado_em).isoformat(),
+        "horarios_status": {
+            campo: em_utc(valor).isoformat() if valor else None
+            for campo, valor in (
+                ("em_preparo", pedido.em_preparo_em),
+                ("pronto", pedido.pronto_em),
+                ("finalizado", pedido.finalizado_em),
+                ("cancelado", pedido.cancelado_em),
+            )
+        },
         "cliente": {"nome_perfil": cliente.nome_perfil, "telefone": cliente.telefone} if cliente else None,
         "itens": [
             {
@@ -112,8 +121,9 @@ def mudar_status(
     p: Principal = Depends(exigir(*TODOS)),
     sessao: Session = Depends(obter_sessao),
     canal: CanalMensagens = Depends(obter_canal),
+    relogio: Relogio = Depends(obter_relogio),
 ) -> dict:
-    pedido = servico.mudar_status(sessao, p.restaurante_id, pedido_id, dados.novo_status, canal)
+    pedido = servico.mudar_status(sessao, p.restaurante_id, pedido_id, dados.novo_status, canal, relogio.agora())
     return {"status": pedido.status}
 
 
@@ -124,6 +134,7 @@ def cancelar(
     p: Principal = Depends(exigir("atendente", "admin")),
     sessao: Session = Depends(obter_sessao),
     canal: CanalMensagens = Depends(obter_canal),
+    relogio: Relogio = Depends(obter_relogio),
 ) -> dict:
-    pedido = servico.cancelar(sessao, p.restaurante_id, pedido_id, dados.motivo, canal)
+    pedido = servico.cancelar(sessao, p.restaurante_id, pedido_id, dados.motivo, canal, relogio.agora())
     return {"status": pedido.status, "motivo": pedido.motivo_cancelamento}

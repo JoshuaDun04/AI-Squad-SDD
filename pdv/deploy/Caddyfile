@@ -1,0 +1,17 @@
+# Certificado HTTPS automático (Let's Encrypt) para o domínio em DOMINIO.
+# Com DOMINIO=localhost (testes), o Caddy usa uma autoridade interna.
+{$DOMINIO} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# O webhook do gateway é interno: nunca exposto (o nginx do painel também responde 404)
+	@webhook path /api/canal/*
+	respond @webhook 404
+
+	# O Caddy troca qualquer X-Forwarded-For vindo da internet pelo IP real do cliente
+	reverse_proxy web:8080
+}

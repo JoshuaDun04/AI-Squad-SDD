@@ -1,0 +1,36 @@
+# Produção numa VPS: HTTPS automático com Caddy na frente do painel.
+# Use sempre pelo script: ./deploy/pdv.sh instalar | atualizar | verificar | backup | restaurar | relatorio
+# (equivale a: docker compose -f docker-compose.yml -f docker-compose.prod.yml ...)
+services:
+  web:
+    # O painel só é acessado pelo Caddy; nenhuma porta do painel fica aberta na internet
+    ports: !reset []
+    environment:
+      # Redes do Docker de onde o Caddy fala com o painel (REV-18, REV-24)
+      PROXY_CONFIAVEL: 172.16.0.0/12,192.168.0.0/16
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: "${DOMINIO:?defina DOMINIO no .env, por exemplo pdv.seudominio.com.br ou 203-0-113-10.sslip.io}"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-dados:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  caddy-dados:
+  caddy-config:

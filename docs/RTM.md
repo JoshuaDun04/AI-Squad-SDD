@@ -54,6 +54,7 @@
 - **RT-05 (Atualização da fila):** painel consulta a fila a cada 3 s (polling); critério de até 5 s.
 - **RT-06 (Logs sem dados pessoais):** telefone mascarado (`*****-1234`) e endereço omitido em todo log.
 - **RT-07 (Execução):** Docker Compose com `api`, `wa-gateway`, `web`, `db`; sobe com um comando.
+- **RT-14 (Horários de status):** o pedido guarda a hora de cada mudança de status, para o relatório do piloto (DEC-10, migração 0005).
 - **RT-08 (Número do pedido):** sequencial por restaurante por dia (fuso do restaurante), reinicia em 1 à meia-noite.
 
 ## Matriz de rastreabilidade
@@ -73,6 +74,7 @@ Arquivos de teste em `pdv/api/tests/`; cada teste leva `@pytest.mark.bdd("<ID>")
 | DN-01 | OBJ-01 | RN-10 | RF-08 | RT-06 | BDD-LGPD-01 @principal; BDD-LGPD-02 @negative | ✅ test_lgpd_logs.py; varredura dos logs reais do e2e |
 | DN-01 | OBJ-01, OBJ-02 | RN-11, RN-10 | RF-08, RF-09 | RT-04 | BDD-OBS-01 @principal; BDD-OBS-02 @variacao; BDD-OBS-03 @negative | ✅ test_observacao.py, test_robo_textos.py |
 | DN-06 | OBJ-06 | — | — | RT-07 | — (infra) | ✅ CI run #1 (11/10/2026): build das 3 imagens e e2e Playwright contra o compose |
+| DN-02 | OBJ-02 | RN-09 | RF-10, RF-11 | RT-14 | — (técnico; teste sem cenário BDD) | ✅ test_cozinha.py (horários de cada status e do cancelamento); relatório do piloto testado em PostgreSQL |
 
 ## Fora da R1 (rastreados para R2–R4)
 

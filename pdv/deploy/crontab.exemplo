@@ -1,0 +1,5 @@
+# Agendamentos sugeridos (crontab -e no usuário que roda o Docker). Ajuste o caminho.
+# Backup do banco e das sessões do WhatsApp todo dia às 03:30
+30 3 * * * cd /opt/pdv-restaurantes/pdv && ./deploy/pdv.sh backup >> backups/cron.log 2>&1
+# Verificação a cada 10 minutos; avisa no celular se algo falhar (crie um tópico em https://ntfy.sh)
+*/10 * * * * cd /opt/pdv-restaurantes/pdv && ALERTA_URL=https://ntfy.sh/troque-por-um-topico-secreto ./deploy/pdv.sh verificar > /dev/null 2>&1

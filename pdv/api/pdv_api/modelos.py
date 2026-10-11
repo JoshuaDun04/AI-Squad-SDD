@@ -147,6 +147,11 @@ class Pedido(Base):
     motivo_cancelamento: Mapped[str | None] = mapped_column(String(300), nullable=True)
     observacao: Mapped[str | None] = mapped_column(String(140), nullable=True)  # RN-11
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Hora de cada mudança de status, para medir preparo e entrega no piloto (DEC-10)
+    em_preparo_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pronto_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finalizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ContadorPedido(Base):

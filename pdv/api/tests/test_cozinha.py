@@ -168,3 +168,33 @@ def test_falha_do_canal_nao_impede_mudanca_de_status(sabor, canal):
     canal.falhar_envio = True
     assert _status(sabor, p["pedido_id"], "Em preparo").status_code == 200
     assert sabor.fila()[0]["status"] == "Em preparo"
+
+
+def test_horario_de_cada_status_fica_registrado(sabor, relogio):
+    """DEC-10: o piloto mede tempo até o preparo, de preparo e de entrega."""
+    p = fazer_pedido(sabor, TEL1)
+    relogio.avancar(minutes=3)
+    _status(sabor, p["pedido_id"], "Em preparo")
+    relogio.avancar(minutes=12)
+    _status(sabor, p["pedido_id"], "Pronto")
+    assert _status(sabor, p["pedido_id"], "Recebido").status_code == 409  # recusada não grava hora
+    relogio.avancar(minutes=20)
+    _status(sabor, p["pedido_id"], "Finalizado", papel="atendente")
+    det = sabor.client.get(f"/pedidos/{p['pedido_id']}", headers=sabor.h()).json()
+    from datetime import datetime
+
+    criado = datetime.fromisoformat(det["criado_em"])
+    h = {k: datetime.fromisoformat(v) if v else None for k, v in det["horarios_status"].items()}
+    assert (h["em_preparo"] - criado).total_seconds() == 180
+    assert (h["pronto"] - h["em_preparo"]).total_seconds() == 720
+    assert (h["finalizado"] - h["pronto"]).total_seconds() == 1200
+    assert h["cancelado"] is None
+
+
+def test_horario_do_cancelamento_fica_registrado(sabor, relogio):
+    p = fazer_pedido(sabor, TEL1)
+    relogio.avancar(minutes=5)
+    _cancelar(sabor, p["pedido_id"], "Cliente desistiu")
+    det = sabor.client.get(f"/pedidos/{p['pedido_id']}", headers=sabor.h()).json()
+    assert det["horarios_status"]["cancelado"] is not None
+    assert det["horarios_status"]["em_preparo"] is None

@@ -21,7 +21,7 @@
 | `GET /whatsapp/status` | admin | `{status, qr_code_data_url?, atualizado_em?}` | 403 | RF-06 |
 | `GET /fila` | cozinha, atendente, admin | `[{pedido_id, numero, status, criado_em, tipo, observacao, itens:[{nome, quantidade}]}]` em ordem de `criado_em`; sem endereço nem telefone | 403 | RF-09, RT-05 |
 | ★ `GET /pedidos?data=AAAA-MM-DD` | atendente, admin | pedidos do dia local (padrão: hoje no fuso do restaurante), com `total_centavos` e `pagamento` | 403 | RF-09 (histórico, BDD-COZ-02) |
-| `GET /pedidos/{id}` | atendente, admin | pedido completo, com cliente `{nome_perfil, telefone}`, endereço e `observacao` | 403 (cozinha), 404 | RF-09, RN-10 |
+| `GET /pedidos/{id}` | atendente, admin | pedido completo, com cliente `{nome_perfil, telefone}`, endereço, `observacao` e `horarios_status: {em_preparo, pronto, finalizado, cancelado}` (ISO 8601 ou `null`) | 403 (cozinha), 404 | RF-09, RN-10, RT-14 |
 | `POST /pedidos/{id}/status` | cozinha, atendente, admin | `{novo_status}` → `200 {status}` | 403, 404, 409 transição inválida, ★ 422 status desconhecido ou "Cancelado" (use /cancelar) | RF-10, RN-09 |
 | `POST /pedidos/{id}/cancelar` | atendente, admin | `{motivo (3 a 300 caracteres)}` → `200 {status, motivo}` | 403, 404, 409 após Pronto, 422 sem motivo | RF-11, RN-09 |
 | ★ `GET /saude` | público | `{ok: true}` | — | RT-07 |

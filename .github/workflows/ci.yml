@@ -34,8 +34,8 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql+psycopg://pdv:pdv@localhost:5432/pdv_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -56,7 +56,7 @@ jobs:
         run: python scripts/verificar_rtm.py --json rtm.json
       - name: Auditoria de dependências
         run: pip-audit -r requirements.lock.txt --require-hashes --disable-pip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: evidencias-api
@@ -72,8 +72,8 @@ jobs:
       run:
         working-directory: pdv/api
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -83,7 +83,7 @@ jobs:
       - run: mutmut run --max-children 4 || true
       - name: Score
         run: mutmut results --all true | python scripts/score_mutacao.py --minimo 85 --json mutacao.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: evidencias-mutacao
@@ -96,8 +96,8 @@ jobs:
       run:
         working-directory: pdv/wa-gateway
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -115,8 +115,8 @@ jobs:
       run:
         working-directory: pdv/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -134,7 +134,7 @@ jobs:
       run:
         working-directory: pdv
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Segredos descartáveis
         run: |
           {
@@ -149,7 +149,7 @@ jobs:
         run: |
           curl -fsS http://localhost:8080/api/saude
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/canal/webhook)" = "404"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install playwright httpx && python -m playwright install --with-deps chromium
@@ -162,7 +162,7 @@ jobs:
         run: |
           docker compose logs --no-color > compose.log
           ! grep -E "5592991234567|5592988887777|Rua 10 de Julho|sem cebola" compose.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: evidencias-stack
@@ -171,3 +171,49 @@ jobs:
             pdv/compose.log
       - if: always()
         run: docker compose down -v
+
+  producao:
+    name: Kit de produção (HTTPS, verificação, backup e restauração)
+    runs-on: ubuntu-latest
+    needs: [api, gateway, web]
+    defaults:
+      run:
+        working-directory: pdv
+    env:
+      VERIFICAR_INSEGURO: "1" # DOMINIO=localhost usa a autoridade interna do Caddy
+      CONFIRMAR: RESTAURAR
+    steps:
+      - uses: actions/checkout@v7
+      - name: Shellcheck
+        run: shellcheck -x deploy/pdv.sh web/entrypoint/05-proxy-confiavel.sh
+      - name: Instalar como numa VPS
+        run: ./deploy/pdv.sh instalar localhost
+      - name: Verificar
+        run: ./deploy/pdv.sh verificar
+      - name: Dados de teste pelo HTTPS
+        run: |
+          curl -fsSk -X POST https://localhost/api/restaurantes -H 'Content-Type: application/json' \
+            -d '{"nome":"Piloto CI","admin_email":"ci@piloto.com","admin_senha":"Forte#2026"}'
+          curl -fsSk -X POST https://localhost/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"ci@piloto.com","senha":"Forte#2026"}' > /dev/null
+      - name: Backup
+        run: ./deploy/pdv.sh backup && ls -l backups
+      - name: Apagar tudo e restaurar
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --wait --wait-timeout 300
+          test "$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/api/auth/login \
+            -H 'Content-Type: application/json' -d '{"email":"ci@piloto.com","senha":"Forte#2026"}')" = "401"
+          ./deploy/pdv.sh restaurar backups/pdv-*.dump backups/sessoes-*.tgz
+          curl -fsSk -X POST https://localhost/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"ci@piloto.com","senha":"Forte#2026"}' > /dev/null
+          ./deploy/pdv.sh verificar
+      - name: Relatório do piloto
+        run: ./deploy/pdv.sh relatorio 7
+      - if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color > producao.log || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: evidencias-producao
+          path: pdv/producao.log

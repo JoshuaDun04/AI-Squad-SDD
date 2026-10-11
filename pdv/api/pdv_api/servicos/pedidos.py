@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,12 @@ from pdv_api.servicos.comum import enviar_sem_falhar
 MOTIVO_MIN = 3
 MOTIVO_MAX = 300
 
+_COLUNA_HORA = {
+    StatusPedido.EM_PREPARO: "em_preparo_em",
+    StatusPedido.PRONTO: "pronto_em",
+    StatusPedido.FINALIZADO: "finalizado_em",
+}
+
 
 def _avisar(sessao: Session, canal: CanalMensagens, pedido: m.Pedido, texto: str) -> None:
     cliente = RepoConversas(sessao, pedido.restaurante_id).obter_cliente(pedido.cliente_id)
@@ -24,7 +31,12 @@ def _avisar(sessao: Session, canal: CanalMensagens, pedido: m.Pedido, texto: str
 
 
 def mudar_status(
-    sessao: Session, restaurante_id: uuid.UUID, pedido_id: uuid.UUID, novo: str, canal: CanalMensagens
+    sessao: Session,
+    restaurante_id: uuid.UUID,
+    pedido_id: uuid.UUID,
+    novo: str,
+    canal: CanalMensagens,
+    agora: datetime,
 ) -> m.Pedido:
     pedido = RepoPedidos(sessao, restaurante_id).obter(pedido_id, para_atualizar=True)
     if pedido is None:
@@ -39,13 +51,19 @@ def mudar_status(
     if not pode_avancar(atual, novo_status):
         raise ErroApi(409, "transicao_invalida", f"não é possível ir de {atual.value} para {novo_status.value}")
     pedido.status = novo_status.value
+    setattr(pedido, _COLUNA_HORA[novo_status], agora)
     sessao.commit()
     _avisar(sessao, canal, pedido, mensagem_status(pedido.numero, novo_status, pedido.tipo))
     return pedido
 
 
 def cancelar(
-    sessao: Session, restaurante_id: uuid.UUID, pedido_id: uuid.UUID, motivo: str, canal: CanalMensagens
+    sessao: Session,
+    restaurante_id: uuid.UUID,
+    pedido_id: uuid.UUID,
+    motivo: str,
+    canal: CanalMensagens,
+    agora: datetime,
 ) -> m.Pedido:
     pedido = RepoPedidos(sessao, restaurante_id).obter(pedido_id, para_atualizar=True)
     if pedido is None:
@@ -58,6 +76,7 @@ def cancelar(
         raise ErroApi(409, "transicao_invalida", f"pedido {atual.value} não pode ser cancelado")
     pedido.status = StatusPedido.CANCELADO.value
     pedido.motivo_cancelamento = motivo
+    pedido.cancelado_em = agora
     sessao.commit()
     _avisar(sessao, canal, pedido, mensagem_status(pedido.numero, StatusPedido.CANCELADO, pedido.tipo, motivo))
     return pedido
