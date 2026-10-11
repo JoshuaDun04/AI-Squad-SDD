@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 # Linha de pedido com variação, adicionais, observação e consumo congelados
 

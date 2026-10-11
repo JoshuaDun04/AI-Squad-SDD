@@ -83,11 +83,11 @@ Cenário: Rejeição de ficha inválida
 
 ```gherkin
 @BDD-ENT-01 @principal @RF-14 @RN-17
-Cenário: Atendente registra entrada de mercadoria
+Cenário: Admin registra entrada de mercadoria
   Dado o Tambaqui com saldo 1500 g
-  Quando o atendente registra entrada de 8000 g de Tambaqui com referência "NF 1234"
+  Quando o admin registra entrada de 8000 g de Tambaqui com referência "NF 1234"
   Então o saldo vira 9500 g
-  E o extrato mostra a entrada de +8000 com o atendente como autor e saldo após 9500
+  E o extrato mostra a entrada de +8000 com o admin como autor e saldo após 9500
 
 @BDD-ENT-02 @variacao @RF-14
 Cenário: Variação - entrada de vários ingredientes de uma vez
@@ -103,6 +103,7 @@ Cenário: Rejeição de entrada inválida ou sem permissão
     | quem     | quantidade | codigo |
     | admin    | 0          | 422    |
     | admin    | -500       | 422    |
+    | atendente | 1000       | 403    |
     | cozinha  | 1000       | 403    |
 ```
 
@@ -225,7 +226,7 @@ Cenário: Rejeição de alteração de estoque pela cozinha
   Dado um usuário com papel "cozinha"
   Quando ele consulta o painel de estoque
   Então vê saldos e alertas
-  Mas recebe 403 ao tentar registrar entrada, ajuste ou editar ingrediente
+  Mas recebe 403 ao tentar registrar entrada, ajuste ou editar ingrediente, assim como o atendente
 ```
 
 ## Extrato (RF-18 · RN-17)

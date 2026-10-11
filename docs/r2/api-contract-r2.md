@@ -11,7 +11,7 @@
 | `GET /ingredientes/alertas/contagem` | A, T, C | `{abaixo_minimo, negativo}` (para o contador do painel; polling de 30 s) | — | RF-17 |
 | `POST /ingredientes` | A | `{nome, unidade: "g"\|"ml"\|"un", estoque_minimo>=0, bloqueia_venda, saldo_inicial>=0}` → `201` | 403, 409 nome repetido, 422 | RF-12, RN-12 |
 | `PATCH /ingredientes/{id}` | A | `{nome?, estoque_minimo?, bloqueia_venda?, ativo?}` (unidade não muda depois de criado) | 403, 404, 409, 422 | RF-12 |
-| `POST /estoque/entradas` | A, T | `{referencia?, itens: [{ingrediente_id, quantidade>0}]}` → `201 {movimentacoes: [...]}`; tudo ou nada | 403, 404, 422 | RF-14, RN-17 |
+| `POST /estoque/entradas` | A | `{referencia?, itens: [{ingrediente_id, quantidade>0}]}` → `201 {movimentacoes: [...]}`; tudo ou nada | 403 (T, C), 404, 422 | RF-14, RN-17, RN-23 |
 | `POST /estoque/inventario` | A | `{ingrediente_id, contagem>=0, motivo (3..300)}` → `201 {movimentacao}`; diferença zero não cria movimentação (`200 {movimentacao: null}`) | 403, 404, 422 | RF-15, RN-17 |
 | `GET /ingredientes/{id}/extrato?de=AAAA-MM-DD&ate=AAAA-MM-DD` | A, T | `{ingrediente, saldo_inicial_periodo, movimentacoes: [{id, tipo, quantidade, saldo_apos, criado_em, autor: {usuario_id?, pedido_numero?}, referencia?, motivo?}]}` | 403 (C), 404 | RF-18 |
 | `PUT/PATCH/DELETE /movimentacoes/{id}` | — | não existe | 405 | RN-17 |

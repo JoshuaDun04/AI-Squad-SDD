@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 # Venda não bloqueada por saldo, exceto em ingredientes marcados
 

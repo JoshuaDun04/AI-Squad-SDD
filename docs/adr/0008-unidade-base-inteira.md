@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 # Quantidades de estoque em inteiros na unidade base (g, ml, un)
 

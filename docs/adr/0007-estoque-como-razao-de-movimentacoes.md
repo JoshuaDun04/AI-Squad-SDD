@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 # Estoque como razão de movimentações com saldo materializado
 
