@@ -72,7 +72,7 @@ Arquivos de teste em `pdv/api/tests/`; cada teste leva `@pytest.mark.bdd("<ID>")
 | DN-02 | OBJ-02 | RN-09 | RF-11 | RT-03 | BDD-CAN-01 @principal; BDD-CAN-02 @variacao; BDD-CAN-03 @negative | ✅ test_cozinha.py; e2e Playwright |
 | DN-01 | OBJ-01 | RN-10 | RF-08 | RT-06 | BDD-LGPD-01 @principal; BDD-LGPD-02 @negative | ✅ test_lgpd_logs.py; varredura dos logs reais do e2e |
 | DN-01 | OBJ-01, OBJ-02 | RN-11, RN-10 | RF-08, RF-09 | RT-04 | BDD-OBS-01 @principal; BDD-OBS-02 @variacao; BDD-OBS-03 @negative | ✅ test_observacao.py, test_robo_textos.py |
-| DN-06 | OBJ-06 | — | — | RT-07 | — (infra) | ⚠️ compose validado e nginx real testado localmente; imagens construídas só no CI (job `stack`), não neste ambiente |
+| DN-06 | OBJ-06 | — | — | RT-07 | — (infra) | ✅ CI run #1 (11/10/2026): build das 3 imagens e e2e Playwright contra o compose |
 
 ## Fora da R1 (rastreados para R2–R4)
 

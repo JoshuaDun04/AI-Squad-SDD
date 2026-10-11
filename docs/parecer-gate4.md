@@ -1,6 +1,6 @@
 # Parecer do Gate 4 — PDV Restaurantes R1
 
-- Data: 08/10/2026, atualizado em 09/10/2026 · Estado técnico: **ready**. Pendências de ambiente: build das imagens e WhatsApp real (ver Limitações).
+- Data: 08/10/2026, atualizado em 09/10/2026 · Estado técnico: **ready**. Pendência de ambiente: WhatsApp real (ver Limitações). Imagens Docker construídas e testadas no CI em 11/10/2026.
 - Base: código construído do zero em 08/10/2026. O parecer anterior (06/10/2026, candidato `2855b6ada300304b`) foi **descartado**: citava 82 testes e mutação executados, mas não havia repositório correspondente.
 - Validação: **revisão independente** por um agente que não participou da construção, com duas rodadas de reverificação das correções. 25 achados (REV-01..REV-25), todos fechados.
 
@@ -21,7 +21,7 @@ Arquivos em `docs/evidence/`.
 | nginx do painel | `nginx -t` ok com o arquivo gerado de `PROXY_CONFIAVEL`; valor que não seja IP/CIDR é recusado | `entrypoint/05-proxy-confiavel.sh` |
 | E2E no navegador (Playwright, Chromium) | ok (08/10): cadastro → cardápio → horários → equipe → pedidos via webhook → fila em **1,9 s** → preparo/pronto → cancelamento → celular 390 px | capturas em `evidence/e2e/` |
 | Auditoria de dependências | 0 vulnerabilidades (pip-audit com hashes; npm audit no gateway e no painel) | job `api` do CI |
-| CI (GitHub Actions) | workflow pronto em `.github/workflows/ci.yml`: API em PostgreSQL, migrações, RTM, mutação ≥ 85%, gateway, painel, build das 3 imagens e e2e contra o compose | **ainda não executado**: falta publicar no GitHub |
+| CI (GitHub Actions) | **sucesso no run #1 (11/10/2026, commit 3533ec4)**: API em PostgreSQL + migrações + RTM + auditoria (1m23s), mutação ≥ 85% (4m19s), gateway, painel, **build das 3 imagens Docker e e2e contra o compose** (1m37s) | [JoshuaDun04/AI-Squad-SDD, run 38102495174](https://github.com/JoshuaDun04/AI-Squad-SDD/actions/runs/38102495174) |
 
 ### Critérios de sucesso da R1 (PRD §7)
 
@@ -79,11 +79,10 @@ Um agente sem acesso ao histórico da construção revisou código, testes e doc
 
 - **DEC-07 (observação livre):** por pedido na R1 (RN-11, BDD-OBS-01..03, migração 0002); por item adiada para a R2. Ver [decisoes.md](decisoes.md).
 - **Contatos LID:** o gateway grava o endereço de resposta por restaurante no volume de dados; depois de reiniciar, os avisos continuam chegando. Apagado ao desconectar o número.
-- **CI:** workflow completo versionado, pronto para o primeiro push.
+- **CI:** publicado no GitHub; primeira execução verde em 11/10/2026.
 
 ## Limitações declaradas
 
-- **Imagens Docker não construídas neste ambiente** (Docker Hub bloqueado). O job `stack` do CI constrói as três e roda o e2e contra o compose: a limitação fecha no primeiro push.
 - **WhatsApp real não testado**: a conexão do Baileys com os servidores do WhatsApp não sai deste ambiente. QR code, envio e recebimento reais ficam para a VPS.
 - Baileys 7 ainda é release candidate.
 - Sem reenvio automático de aviso que falhou (previsto para R3).
