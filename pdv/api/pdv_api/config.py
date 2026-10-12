@@ -23,6 +23,9 @@ class Config:
     login_max_tentativas: int = 5
     login_max_tentativas_ip: int = 30
     login_janela_min: int = 15
+    # App Windows (DEC-11): um restaurante por instalação e endereço do painel na rede local
+    restaurante_unico: bool = False
+    endereco_rede: str = ""
 
     def __post_init__(self) -> None:
         if len(self.jwt_secret) < JWT_SECRET_MIN:
@@ -41,4 +44,6 @@ class Config:
             gateway_token=os.environ.get("GATEWAY_TOKEN", ""),
             gateway_url=os.environ.get("GATEWAY_URL", "http://wa-gateway:3001"),
             cors_origens=origens,
+            restaurante_unico=os.environ.get("PDV_RESTAURANTE_UNICO", "") == "1",
+            endereco_rede=os.environ.get("PDV_ENDERECO_REDE", "").strip(),
         )

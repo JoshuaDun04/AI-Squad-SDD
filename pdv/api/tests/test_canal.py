@@ -177,3 +177,13 @@ def test_adaptador_gateway_baileys_converte_falha_sem_dados_pessoais():
     gw2 = GatewayBaileys("http://gw", "t" * 16, cliente=httpx.Client(base_url="http://gw", transport=httpx.MockTransport(cair)))
     with pytest.raises(ErroCanal):
         gw2.iniciar_sessao(uuid.uuid4())
+
+
+def test_conexoes_para_o_app_windows(sabor, client):
+    """RF-26: o app consulta o status do WhatsApp com o token do gateway; sem dados de cliente."""
+    h = {"X-Gateway-Token": GATEWAY_TOKEN}
+    assert client.get("/canal/conexoes", headers=h).json() == [{"restaurante": "Sabor do Rio", "status": "desconectado"}]
+    _evento_conexao(sabor.client, sabor.id, "conectado")
+    assert client.get("/canal/conexoes", headers=h).json() == [{"restaurante": "Sabor do Rio", "status": "conectado"}]
+    assert client.get("/canal/conexoes").status_code == 401
+    assert client.get("/canal/conexoes", headers={"X-Gateway-Token": "x" * 20}).status_code == 401

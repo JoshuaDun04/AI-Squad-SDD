@@ -49,3 +49,29 @@ DEC-01..DEC-06 foram tomadas antes deste repositório existir e estão citadas n
 4. **Plano do piloto:** ensaio interno com 15 testes no WhatsApp real, depois duas semanas com um restaurante, com métricas e critérios de parada ([plano-piloto.md](operacao/plano-piloto.md)). Os alvos das métricas são hipóteses para o PM confirmar.
 
 **Consequências.** Novo job `producao` no CI (instala como numa VPS, verifica, faz backup, apaga tudo e restaura). Actions do CI atualizadas para v7 (Node 24).
+
+## DEC-11 — O PDV passa a ser um aplicativo Windows instalado no computador do restaurante
+
+- Data: 12/10/2026 · Decisor: PM · Origem: objetivo do PM de distribuir um executável que o dono roda no próprio computador
+
+**Decisões.**
+1. **Só Windows**, com instalador `.exe`.
+2. **Só o aplicativo:** a implantação em servidor (VPS, Caddy, `deploy/pdv.sh`, Docker Compose) deixa de ser forma de distribuição e sai do repositório. O código da API continua aceitando PostgreSQL, mas o produto usa SQLite.
+3. **Banco SQLite embutido**, um arquivo na pasta do usuário do Windows.
+4. **Atualização automática pelo GitHub Releases** do repositório.
+5. **Um restaurante por instalação:** o primeiro cadastro fecha o cadastro de novos restaurantes naquele computador.
+
+**Consequências.**
+- O robô só responde com o computador ligado e com internet. O app abre com o Windows, fica na bandeja, impede que o Windows suspenda o processo e avisa quando o WhatsApp cai; o dono precisa deixar o computador ligado no horário de funcionamento.
+- A tela da cozinha acessa o painel pela rede local do restaurante, por HTTP. Senhas trafegam sem criptografia na rede da casa; aceitável para Wi-Fi com senha, registrado como risco RSK-03.
+- Backup automático passa a ser responsabilidade do app (diário, guardando 14) e fica no mesmo computador; perda do disco perde os backups (RSK-04). O guia recomenda copiar a pasta de backups para um pendrive ou nuvem própria periodicamente.
+- Sem certificado de assinatura de código, o Windows SmartScreen mostra um aviso na primeira instalação (RSK-05). Comprar um certificado resolve.
+- Para a atualização automática funcionar sem senha, os releases precisam ser públicos (o repositório JoshuaDun04/AI-Squad-SDD já é público).
+- Novas peças: ADR-0011 (aplicativo desktop) e ADR-0012 (SQLite como banco do produto); especificação em [desktop/RTM-desktop.md](desktop/RTM-desktop.md). O DEC-10 (kit de produção na VPS) fica superado; o relatório do piloto passa para dentro do painel.
+
+**Implementação (12/10/2026).**
+- `pdv/desktop`: app Electron com bandeja, inicialização com o Windows, supervisão com espera crescente, backup diário e ao sair, restauração, aviso de WhatsApp desconectado e de rede Pública, atualização automática e "Redefinir senha do dono…" (RF-28, acrescentado nesta entrega porque, num computador sem suporte por perto, senha esquecida trancaria o dono fora do próprio restaurante).
+- API e robô saem sozinhos se o app cair (sem processo órfão segurando o banco); `instancia.json` na pasta de dados diz onde cada peça está ouvindo, sem segredos.
+- Python 3.12.10 embutido, baixado do python.org com a assinatura Sigstore conferida no CI; dependências do `requirements-windows.lock.txt` (mesmas versões do lock principal, com hash).
+- CI: os jobs `stack` e `producao` (Docker e VPS) saíram; entraram `app` (serviços orquestrados + e2e no Linux) e `windows` (monta o instalador, instala em silêncio, roda o e2e no app instalado, derruba o app e confere que não sobram processos; publica em Releases quando a tag `v*` é criada).
+- Removidos: `pdv/deploy/`, `docker-compose*.yml`, Dockerfiles, configuração do nginx e `docs/operacao/implantacao-vps.md`. Guia novo para o dono: [operacao/instalacao-windows.md](operacao/instalacao-windows.md).

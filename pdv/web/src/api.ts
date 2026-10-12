@@ -1,4 +1,4 @@
-/** Cliente da API. Todas as rotas passam por /api (nginx ou proxy do Vite). */
+/** Cliente da API. Todas as rotas passam por /api (servidor do painel no app, ou proxy do Vite). */
 
 export type Papel = "admin" | "atendente" | "cozinha";
 export type StatusPedido = "Recebido" | "Em preparo" | "Pronto" | "Finalizado" | "Cancelado";
@@ -76,6 +76,39 @@ export interface PedidoDetalhe {
   criado_em: string;
   cliente: { nome_perfil: string; telefone: string } | null;
   itens: { item_id: string; nome: string; preco_unitario_centavos: number; quantidade: number }[];
+}
+
+export interface Instalacao {
+  modo: "local" | "servidor";
+  cadastro_aberto: boolean;
+  endereco_rede: string | null;
+}
+
+export interface ResumoTempo {
+  pedidos: number;
+  mediana_min: number | null;
+  p90_min: number | null;
+}
+
+export interface Relatorio {
+  dias: number;
+  ate: string;
+  whatsapp: string;
+  totais: { pedidos: number; cancelados: number; vendido_centavos: number; ticket_medio_centavos: number | null };
+  por_dia: {
+    dia: string;
+    pedidos: number;
+    finalizados: number;
+    cancelados: number;
+    em_aberto: number;
+    entregas: number;
+    ticket_medio_centavos: number | null;
+    vendido_centavos: number;
+  }[];
+  tempos: { ate_preparo: ResumoTempo; preparo: ResumoTempo; pronto_ate_finalizado: ResumoTempo };
+  por_hora: { hora: number; pedidos: number }[];
+  cancelamentos: { motivo: string; vezes: number }[];
+  itens_mais_pedidos: { nome: string; unidades: number }[];
 }
 
 export interface Usuario {
@@ -159,6 +192,8 @@ export function traduzirErro(status: number, dados: { erro?: string; detalhe?: s
       return "Muitas tentativas de entrada. Espere 15 minutos e tente de novo.";
     case "nao_autenticado":
       return "E-mail ou senha incorretos.";
+    case "restaurante_ja_cadastrado":
+      return "Este computador já tem um restaurante cadastrado. Entre com o e-mail do dono.";
     case "email_em_uso":
       return "Esse e-mail já está cadastrado.";
     case "transicao_invalida":

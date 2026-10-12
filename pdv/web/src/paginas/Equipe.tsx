@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ErroApi, type Papel, type Usuario } from "../api";
 import { useSessao } from "../App";
+import EnderecoCozinha from "./EnderecoCozinha";
 
 const PAPEIS: { valor: Papel; nome: string; descricao: string }[] = [
   { valor: "cozinha", nome: "Cozinha", descricao: "vê a fila e avança o preparo" },
@@ -48,6 +49,7 @@ export default function Equipe() {
       <div className="pagina-topo">
         <h1>Equipe</h1>
       </div>
+      <EnderecoCozinha />
       {erro && (
         <p className="erro" role="alert">
           {erro}

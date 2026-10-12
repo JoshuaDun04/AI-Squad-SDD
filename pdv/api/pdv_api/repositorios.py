@@ -22,6 +22,9 @@ from pdv_api import modelos as m
 from pdv_api.dominio.status import STATUS_NA_FILA
 
 
+_TRAVA_CADASTRO = 2_401_001  # identificador fixo da trava de cadastro no PostgreSQL
+
+
 class RepoRestaurantes:
     def __init__(self, sessao: Session) -> None:
         self.s = sessao
@@ -34,6 +37,23 @@ class RepoRestaurantes:
 
     def obter(self, restaurante_id: uuid.UUID) -> m.Restaurante | None:
         return self.s.get(m.Restaurante, restaurante_id)
+
+    def travar_cadastro(self) -> None:
+        """Serializa cadastros até o fim da transação (RN-24). No SQLite o BEGIN IMMEDIATE já basta."""
+        if self.s.get_bind().dialect.name == "postgresql":
+            self.s.execute(select(func.pg_advisory_xact_lock(_TRAVA_CADASTRO)))
+
+    def conexoes(self) -> list[tuple[str, str]]:
+        """(nome do restaurante, status do WhatsApp) de todos: só para o app Windows avisar o dono (RF-26)."""
+        linhas = self.s.execute(
+            select(m.Restaurante.nome, m.ConexaoWhatsapp.status)
+            .outerjoin(m.ConexaoWhatsapp, m.ConexaoWhatsapp.restaurante_id == m.Restaurante.id)
+            .order_by(m.Restaurante.nome)
+        )
+        return [(nome, status or "desconectado") for nome, status in linhas]
+
+    def existe_algum(self) -> bool:
+        return self.s.scalar(select(m.Restaurante.id).limit(1)) is not None
 
 
 class RepoAutenticacao:
@@ -322,6 +342,16 @@ class RepoPedidos(_RepoDoRestaurante):
                 select(m.Pedido)
                 .where(m.Pedido.restaurante_id == self.rid, m.Pedido.data_local == data_local)
                 .order_by(m.Pedido.numero)
+            )
+        )
+
+    def desde(self, data_local_minima: date) -> list[m.Pedido]:
+        """Pedidos a partir de um dia local (relatório do piloto, RF-27)."""
+        return list(
+            self.s.scalars(
+                select(m.Pedido)
+                .where(m.Pedido.restaurante_id == self.rid, m.Pedido.data_local >= data_local_minima)
+                .order_by(m.Pedido.data_local, m.Pedido.numero)
             )
         )
 

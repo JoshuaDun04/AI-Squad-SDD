@@ -2,8 +2,10 @@ import { ClienteApiHttp } from "./api.js";
 import { criarApp } from "./app.js";
 import { ConfigInvalida, lerConfig } from "./config.js";
 import { SessoesBaileys } from "./sessoes.js";
+import { vigiarProcessoPai } from "./vigia.js";
 
 async function main(): Promise<void> {
+  if (process.env.PDV_VIGIAR_PAI === "1") vigiarProcessoPai();
   let config;
   try {
     config = lerConfig();
@@ -17,7 +19,7 @@ async function main(): Promise<void> {
   const api = new ClienteApiHttp(config.apiUrl, config.token);
   const sessoes = new SessoesBaileys(config.dataDir, api);
   const app = criarApp(sessoes, config.token);
-  app.listen(config.porta, () => console.info(`wa-gateway ouvindo na porta ${config.porta}`));
+  app.listen(config.porta, config.host, () => console.info(`wa-gateway ouvindo na porta ${config.porta}`));
   await sessoes.restaurar();
 }
 

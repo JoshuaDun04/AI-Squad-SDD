@@ -15,6 +15,7 @@ import Entrar from "./paginas/Entrar";
 import Equipe from "./paginas/Equipe";
 import Horarios from "./paginas/Horarios";
 import Pedidos from "./paginas/Pedidos";
+import Relatorio from "./paginas/Relatorio";
 import Whatsapp from "./paginas/Whatsapp";
 
 interface Contexto {
@@ -45,6 +46,7 @@ const PAGINAS: Pagina[] = [
   { rota: "horarios", nome: "Horários", papeis: ["admin"], Componente: Horarios },
   { rota: "whatsapp", nome: "WhatsApp", papeis: ["admin"], Componente: Whatsapp },
   { rota: "equipe", nome: "Equipe", papeis: ["admin"], Componente: Equipe },
+  { rota: "relatorio", nome: "Relatório", papeis: ["admin"], Componente: Relatorio },
 ];
 
 function rotaAtual(): string {

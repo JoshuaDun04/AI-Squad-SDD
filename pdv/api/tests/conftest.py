@@ -18,6 +18,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from pdv_api.banco import criar_engine
 from pdv_api.config import Config
 from pdv_api.dominio.canal import CanalEmMemoria
 from pdv_api.main import criar_app
@@ -44,7 +45,7 @@ TERCA_MEIO_DIA = manaus(2026, 10, 6, 12, 0)
 def engine():
     url = os.environ.get("TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
     if url.startswith("sqlite"):
-        eng = create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool, hide_parameters=True)
+        eng = criar_engine(url)
     else:
         eng = create_engine(url, hide_parameters=True)
     Base.metadata.drop_all(eng)
@@ -164,7 +165,7 @@ class Restaurante:
             json={
                 "tipo": "mensagem",
                 "restaurante_id": self.id,
-                "mensagem_id": mensagem_id or f"wamid-{next(_seq)}",
+                "mensagem_id": mensagem_id or f"wamid-auto-{next(_seq)}",
                 "telefone": telefone,
                 "nome_perfil": nome,
                 "texto": texto,

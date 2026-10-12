@@ -12,7 +12,8 @@ from pdv_api.modelos import Base
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Não desliga os loggers já criados (a API e os testes continuam registrando)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
 if not url:
@@ -30,7 +31,13 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     conectavel = engine_from_config(config.get_section(config.config_ini_section, {}), prefix="sqlalchemy.", poolclass=pool.NullPool)
     with conectavel.connect() as conexao:
-        context.configure(connection=conexao, target_metadata=target_metadata, compare_type=True)
+        # SQLite não altera colunas no lugar: migrações usam "batch" (recria a tabela) - ADR-0012
+        context.configure(
+            connection=conexao,
+            target_metadata=target_metadata,
+            compare_type=True,
+            render_as_batch=conexao.dialect.name == "sqlite",
+        )
         with context.begin_transaction():
             context.run_migrations()
 

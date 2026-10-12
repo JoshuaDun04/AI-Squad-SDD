@@ -69,3 +69,10 @@ def webhook(
     except RestauranteInexistente as exc:
         raise nao_encontrado("restaurante") from exc
     return {"ok": True}
+
+
+@router.get("/conexoes")
+def conexoes(sessao: Session = Depends(obter_sessao)) -> list[dict]:
+    """Status do WhatsApp por restaurante, para o app Windows avisar quando cai (RF-26).
+    Protegido pelo token do gateway e bloqueado para a rede local pelo servidor do painel."""
+    return [{"restaurante": nome, "status": status} for nome, status in RepoRestaurantes(sessao).conexoes()]

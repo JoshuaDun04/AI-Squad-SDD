@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { chamar, ErroApi, type Sessao } from "../api";
+import { chamar, ErroApi, type Instalacao, type Sessao } from "../api";
 
 export default function Entrar({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) {
   const [modo, setModo] = useState<"entrar" | "cadastrar">("entrar");
@@ -9,6 +9,19 @@ export default function Entrar({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) 
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [instalacao, setInstalacao] = useState<Instalacao | null>(null);
+
+  useEffect(() => {
+    // No app Windows, o primeiro uso abre direto no cadastro; depois, só o login (RF-21)
+    chamar<Instalacao>("/instalacao")
+      .then((i) => {
+        setInstalacao(i);
+        if (i.modo === "local" && i.cadastro_aberto) setModo("cadastrar");
+      })
+      .catch(() => {});
+  }, []);
+
+  const podeCadastrar = instalacao?.cadastro_aberto ?? true;
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -42,6 +55,9 @@ export default function Entrar({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) 
       </div>
       <form className="entrada-form" onSubmit={enviar}>
         <h1>{modo === "entrar" ? "Entrar no painel" : "Cadastrar restaurante"}</h1>
+        {modo === "cadastrar" && instalacao?.modo === "local" && (
+          <p className="ajuda">Primeiro uso deste computador. O e-mail e a senha abaixo serão o acesso do dono.</p>
+        )}
         {modo === "cadastrar" && (
           <label>
             Nome do restaurante
@@ -72,6 +88,7 @@ export default function Entrar({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) 
         <button className="primario" disabled={enviando}>
           {modo === "entrar" ? "Entrar" : "Cadastrar e entrar"}
         </button>
+        {podeCadastrar && (
         <button
           type="button"
           className="link"
@@ -82,6 +99,7 @@ export default function Entrar({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) 
         >
           {modo === "entrar" ? "Primeiro acesso? Cadastre seu restaurante" : "Já tenho conta"}
         </button>
+        )}
       </form>
     </div>
   );

@@ -1,5 +1,6 @@
-"""Concorrência real (REV-01, REV-02, REV-04). Só roda em PostgreSQL: o SQLite
-dos testes usa uma conexão única e não reproduz travas entre transações."""
+"""Concorrência real (REV-01, REV-02, REV-04). Roda em PostgreSQL e em SQLite em arquivo
+(o banco do app Windows, ADR-0012). O SQLite em memória usa uma conexão única e não
+reproduz travas entre transações."""
 
 from __future__ import annotations
 
@@ -13,9 +14,10 @@ import pytest
 from pdv_api.dominio.canal import CanalEmMemoria
 from pdv_api.servicos.robo_servico import MensagemRecebida, processar_mensagem
 
+_URL = os.environ.get("TEST_DATABASE_URL", "")
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("TEST_DATABASE_URL", "").startswith("postgresql"),
-    reason="concorrência real exige PostgreSQL (TEST_DATABASE_URL)",
+    not (_URL.startswith("postgresql") or (_URL.startswith("sqlite") and ":memory:" not in _URL and _URL.count("/") >= 3)),
+    reason="concorrência real exige PostgreSQL ou SQLite em arquivo (TEST_DATABASE_URL)",
 )
 
 

@@ -1,5 +1,0 @@
-# Só para o CI: expõe a API para o teste ponta a ponta simular o gateway.
-services:
-  api:
-    ports:
-      - "8000:8000"

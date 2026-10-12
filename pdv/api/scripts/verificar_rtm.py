@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Verificador de rastreabilidade e arquitetura da R1.
 
-1. Cobertura BDD: todo cenário de docs/bdd-r1.md tem ao menos um teste
+1. Cobertura BDD: todo cenário de docs/bdd-r1.md e docs/desktop/bdd-desktop.md tem ao menos um teste
+   (pytest com @pytest.mark.bdd, ou teste do app em pdv/desktop/test com "[BDD-XXX-NN]" no título)
    marcado com @pytest.mark.bdd("<ID>") em pdv/api/tests/. Nenhum marcador
    aponta para cenário inexistente. Cenários @negative são listados à parte.
 2. ADR-0001: nenhuma rota consulta o banco direto (sem select/query/execute/
@@ -53,6 +54,20 @@ def marcadores(tests: Path) -> dict[str, list[str]]:
     return achados
 
 
+RE_ID_TITULO = re.compile(r"\[(BDD-[A-Z]+-\d+)\]")
+
+
+def marcadores_desktop(pasta: Path) -> dict[str, list[str]]:
+    """Testes do app Electron (node:test): o ID do cenário vai no título, ex.: "[BDD-PNL-01] ..."."""
+    achados: dict[str, list[str]] = {}
+    if not pasta.is_dir():
+        return achados
+    for arq in sorted(pasta.glob("*.test.*")):
+        for ident in RE_ID_TITULO.findall(arq.read_text(encoding="utf-8")):
+            achados.setdefault(ident, []).append(arq.name)
+    return achados
+
+
 def violacoes_rotas(rotas: Path) -> list[str]:
     erros = []
     for arq in sorted(rotas.glob("*.py")):
@@ -98,7 +113,10 @@ def main() -> int:
     args = ap.parse_args()
 
     todos = cenarios(args.raiz / "docs" / "bdd-r1.md")
+    todos.update(cenarios(args.raiz / "docs" / "desktop" / "bdd-desktop.md"))
     marcas = marcadores(API / "tests")
+    for ident, testes in marcadores_desktop(args.raiz / "pdv" / "desktop" / "test").items():
+        marcas.setdefault(ident, []).extend(testes)
     sem_teste = sorted(c for c in todos if c not in marcas)
     orfaos = sorted(m for m in marcas if m not in todos)
     negativos = sorted(c for c, t in todos.items() if t == "negative")

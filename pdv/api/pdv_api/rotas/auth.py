@@ -44,7 +44,17 @@ class Login(BaseModel):
 
 
 @router.post("/restaurantes", status_code=201)
-def cadastrar_restaurante(dados: NovoRestaurante, sessao: Session = Depends(obter_sessao)) -> dict:
+def cadastrar_restaurante(
+    dados: NovoRestaurante,
+    sessao: Session = Depends(obter_sessao),
+    config: Config = Depends(obter_config),
+) -> dict:
+    # RN-24: no app Windows, a instalação atende um restaurante só. Verificação e cadastro
+    # ficam em série: BEGIN IMMEDIATE no SQLite, trava transacional no PostgreSQL.
+    if config.restaurante_unico:
+        RepoRestaurantes(sessao).travar_cadastro()
+    if config.restaurante_unico and RepoRestaurantes(sessao).existe_algum():
+        raise ErroApi(409, "restaurante_ja_cadastrado", "este computador já tem um restaurante cadastrado")
     auth = RepoAutenticacao(sessao)
     if auth.email_em_uso(dados.admin_email):
         raise ErroApi(409, "email_em_uso", "e-mail já cadastrado")
@@ -52,6 +62,17 @@ def cadastrar_restaurante(dados: NovoRestaurante, sessao: Session = Depends(obte
     RepoUsuarios(sessao, restaurante.id).criar(dados.admin_email, hash_senha(dados.admin_senha), "admin")
     sessao.commit()
     return {"restaurante_id": str(restaurante.id)}
+
+
+@router.get("/instalacao")
+def instalacao(sessao: Session = Depends(obter_sessao), config: Config = Depends(obter_config)) -> dict:
+    """Público: o painel decide entre cadastro e login e mostra o endereço para a cozinha (RF-21, RF-23)."""
+    cadastro_aberto = not (config.restaurante_unico and RepoRestaurantes(sessao).existe_algum())
+    return {
+        "modo": "local" if config.restaurante_unico else "servidor",
+        "cadastro_aberto": cadastro_aberto,
+        "endereco_rede": config.endereco_rede or None,
+    }
 
 
 @router.post("/auth/login")

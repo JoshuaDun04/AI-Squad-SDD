@@ -1,9 +1,11 @@
-# CI da R1: os mesmos sensores do Gate 4, rodando a cada push e pull request.
+# CI: os sensores do Gate 4 a cada push e pull request, mais o app Windows (ADR-0011).
+# Tag v* publica o instalador no GitHub Releases; o app instalado se atualiza sozinho por lá (RF-25).
 name: CI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -55,7 +57,16 @@ jobs:
       - name: Verificador de RTM e arquitetura (ADR-0001)
         run: python scripts/verificar_rtm.py --json rtm.json
       - name: Auditoria de dependências
-        run: pip-audit -r requirements.lock.txt --require-hashes --disable-pip
+        run: |
+          pip-audit -r requirements.lock.txt --require-hashes --disable-pip
+          pip-audit -r requirements-windows.lock.txt --require-hashes --disable-pip
+      - name: Lock do Windows com as mesmas versões do lock principal
+        run: |
+          pip install uv
+          grep -oE "^[a-z0-9_.-]+==[^ ]+" requirements.lock.txt > pins.txt
+          uv pip compile pyproject.toml --python-version 3.12 --python-platform x86_64-pc-windows-msvc \
+            --generate-hashes --constraint pins.txt --no-header -q -o novo.txt
+          diff <(grep -v "^#" requirements-windows.lock.txt) novo.txt
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -126,94 +137,138 @@ jobs:
       - run: npm run build
       - run: npm audit
 
-  stack:
-    name: Imagens Docker + e2e no navegador
-    runs-on: ubuntu-latest
-    needs: [api, gateway, web]
-    defaults:
-      run:
-        working-directory: pdv
-    steps:
-      - uses: actions/checkout@v7
-      - name: Segredos descartáveis
-        run: |
-          {
-            echo "POSTGRES_PASSWORD=$(openssl rand -hex 12)"
-            echo "JWT_SECRET=$(openssl rand -hex 32)"
-            echo "GATEWAY_TOKEN=$(openssl rand -hex 16)"
-            echo "PORTA_PAINEL=8080"
-          } > .env
-      - name: Construir e subir (RT-07)
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build --wait --wait-timeout 300
-      - name: Fumaça
-        run: |
-          curl -fsS http://localhost:8080/api/saude
-          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/canal/webhook)" = "404"
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - run: pip install playwright httpx && python -m playwright install --with-deps chromium
-      - name: E2E (cadastro → cardápio → pedido → cozinha → cancelamento)
-        run: |
-          set -a; . ./.env; set +a
-          WEB_URL=http://localhost:8080 API_URL=http://localhost:8000 SHOTS_DIR=e2e-shots python e2e/e2e.py
-      - name: Logs sem dados pessoais (RN-10)
-        if: always()
-        run: |
-          docker compose logs --no-color > compose.log
-          ! grep -E "5592991234567|5592988887777|Rua 10 de Julho|sem cebola" compose.log
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: evidencias-stack
-          path: |
-            pdv/e2e-shots
-            pdv/compose.log
-      - if: always()
-        run: docker compose down -v
-
-  producao:
-    name: Kit de produção (HTTPS, verificação, backup e restauração)
+  app:
+    name: App (serviços orquestrados + e2e no navegador)
     runs-on: ubuntu-latest
     needs: [api, gateway, web]
     defaults:
       run:
         working-directory: pdv
     env:
-      VERIFICAR_INSEGURO: "1" # DOMINIO=localhost usa a autoridade interna do Caddy
-      CONFIRMAR: RESTAURAR
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v7
-      - name: Shellcheck
-        run: shellcheck -x deploy/pdv.sh web/entrypoint/05-proxy-confiavel.sh
-      - name: Instalar como numa VPS
-        run: ./deploy/pdv.sh instalar localhost
-      - name: Verificar
-        run: ./deploy/pdv.sh verificar
-      - name: Dados de teste pelo HTTPS
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pdv/api/requirements.lock.txt
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: pip install --require-hashes -r api/requirements.lock.txt
+      - run: npm ci && npm run build
+        working-directory: pdv/wa-gateway
+      - run: npm ci && npm run build
+        working-directory: pdv/web
+      - run: npm ci
+        working-directory: pdv/desktop
+      - name: Testes do app (BDD-PNL, BDD-APP)
+        run: npm test
+        working-directory: pdv/desktop
+      - run: pip install playwright httpx && python -m playwright install --with-deps chromium
+      - name: E2E contra os serviços como no computador do restaurante
         run: |
-          curl -fsSk -X POST https://localhost/api/restaurantes -H 'Content-Type: application/json' \
-            -d '{"nome":"Piloto CI","admin_email":"ci@piloto.com","admin_senha":"Forte#2026"}'
-          curl -fsSk -X POST https://localhost/api/auth/login -H 'Content-Type: application/json' \
-            -d '{"email":"ci@piloto.com","senha":"Forte#2026"}' > /dev/null
-      - name: Backup
-        run: ./deploy/pdv.sh backup && ls -l backups
-      - name: Apagar tudo e restaurar
-        run: |
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --wait --wait-timeout 300
-          test "$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/api/auth/login \
-            -H 'Content-Type: application/json' -d '{"email":"ci@piloto.com","senha":"Forte#2026"}')" = "401"
-          ./deploy/pdv.sh restaurar backups/pdv-*.dump backups/sessoes-*.tgz
-          curl -fsSk -X POST https://localhost/api/auth/login -H 'Content-Type: application/json' \
-            -d '{"email":"ci@piloto.com","senha":"Forte#2026"}' > /dev/null
-          ./deploy/pdv.sh verificar
-      - name: Relatório do piloto
-        run: ./deploy/pdv.sh relatorio 7
-      - if: always()
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color > producao.log || true
+          DADOS="$RUNNER_TEMP/pdv-dados"
+          node desktop/scripts/rodar-servicos.mjs --dados "$DADOS" > servicos.log 2>&1 &
+          SERVICOS=$!
+          for _ in $(seq 1 60); do [ -f "$DADOS/instancia.json" ] && break; sleep 1; done
+          cat servicos.log
+          PDV_DADOS="$DADOS" SHOTS_DIR=e2e-shots python e2e/e2e.py
+          kill $SERVICOS; sleep 3
+          cp -r "$DADOS/logs" app-logs
+      - name: Logs sem dados pessoais (RN-10)
+        if: always()
+        run: "! grep -rE '5592991234567|5592988887777|Rua 10 de Julho|sem cebola' app-logs servicos.log"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: evidencias-producao
-          path: pdv/producao.log
+          name: evidencias-app
+          path: |
+            pdv/e2e-shots
+            pdv/app-logs
+            pdv/servicos.log
+
+  windows:
+    name: Instalador Windows (build, instalação, fumaça, e2e${{ startsWith(github.ref, 'refs/tags/v') && ', publicação' || '' }})
+    runs-on: windows-latest
+    needs: [app]
+    permissions:
+      contents: write # publicar o release na tag
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: pdv
+    env:
+      PYTHON_EMBED: "3.12.10"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Versão do app confere com a tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          $versao = (Get-Content desktop/package.json | ConvertFrom-Json).version
+          if ("v$versao" -ne "${{ github.ref_name }}") { throw "package.json está em $versao, a tag é ${{ github.ref_name }}" }
+      - run: npm ci && npm run build
+        working-directory: pdv/wa-gateway
+      - run: npm ci && npm run build
+        working-directory: pdv/web
+      - name: Python embutido (python.org, assinatura Sigstore conferida)
+        run: |
+          $base = "https://www.python.org/ftp/python/$env:PYTHON_EMBED/python-$env:PYTHON_EMBED-embed-amd64.zip"
+          $zip = "$env:RUNNER_TEMP\python-embed.zip"
+          Invoke-WebRequest $base -OutFile $zip
+          Invoke-WebRequest "$base.sigstore" -OutFile "$zip.sigstore"
+          python -m pip install --disable-pip-version-check sigstore
+          python -m sigstore verify identity --bundle "$zip.sigstore" `
+            --cert-identity thomas@python.org --cert-oidc-issuer https://accounts.google.com $zip
+          if ($LASTEXITCODE -ne 0) { throw "assinatura do Python embutido não confere" }
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP\python-embed"
+      - name: Recursos do app (API, Python + dependências com hash, gateway, painel)
+        working-directory: pdv/desktop
+        run: |
+          npm ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node scripts/preparar-recursos.mjs --python-embed "$env:RUNNER_TEMP\python-embed" --pip "python -m pip"
+      - name: Instalador
+        working-directory: pdv/desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $publicar = if ("${{ github.ref }}".StartsWith("refs/tags/v")) { "always" } else { "never" }
+          npx electron-builder --win --x64 --publish $publicar
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Get-ChildItem dist-app -File | Format-Table Name, Length
+      - name: Instalar em silêncio, como o dono faria
+        working-directory: pdv/desktop
+        run: |
+          $setup = Get-ChildItem dist-app -Filter "PDV-Restaurantes-Setup-*.exe" | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "PDV Restaurantes.exe" | Select-Object -First 1
+          if (-not $exe) { throw "app não encontrado depois da instalação" }
+          "PDV_EXE=$($exe.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "instalado em $($exe.FullName)"
+      - run: python -m pip install playwright httpx && python -m playwright install chromium
+      - name: Fumaça do app instalado + e2e + sem processos órfãos (RT-19)
+        run: node desktop/scripts/fumaca-instalado.mjs --exe "$env:PDV_EXE" --dados "$env:RUNNER_TEMP\pdv-dados" -- python e2e/e2e.py
+        env:
+          SHOTS_DIR: e2e-shots-windows
+      - name: Logs sem dados pessoais (RN-10)
+        if: always()
+        run: |
+          $achados = Select-String -Path "$env:RUNNER_TEMP\pdv-dados\logs\*" -Pattern '5592991234567|5592988887777|Rua 10 de Julho|sem cebola'
+          if ($achados) { $achados; throw "dados pessoais nos logs" }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: instalador-windows
+          path: |
+            pdv/desktop/dist-app/*.exe
+            pdv/desktop/dist-app/latest.yml
+            pdv/e2e-shots-windows
+            ${{ runner.temp }}/pdv-dados/logs

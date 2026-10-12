@@ -1,0 +1,101 @@
+{
+  "name": "pdv-restaurantes",
+  "productName": "PDV Restaurantes",
+  "version": "1.0.0",
+  "description": "Pedidos do WhatsApp direto na cozinha, rodando no computador do restaurante.",
+  "author": "Geudes Araújo Gomes Júnior",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "recursos": "node scripts/preparar-recursos.mjs",
+    "dist": "electron-builder --win --publish never",
+    "publicar": "electron-builder --win --publish always",
+    "fumaca": "node scripts/fumaca-instalado.mjs",
+    "servicos": "node scripts/rodar-servicos.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.10"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoshuaDun04/AI-Squad-SDD.git"
+  },
+  "build": {
+    "appId": "br.com.pdvrestaurantes.app",
+    "productName": "PDV Restaurantes",
+    "copyright": "© 2026 PDV Restaurantes",
+    "directories": {
+      "output": "dist-app",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "recursos/api",
+        "to": "api"
+      },
+      {
+        "from": "recursos/python",
+        "to": "python"
+      },
+      {
+        "from": "recursos/wa-gateway",
+        "to": "wa-gateway"
+      },
+      {
+        "from": "recursos/web",
+        "to": "web"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "executableName": "PDV Restaurantes",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "PDV Restaurantes",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "pt_BR"
+      ],
+      "language": "1046",
+      "include": "build/installer.nsh",
+      "artifactName": "PDV-Restaurantes-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JoshuaDun04",
+        "repo": "AI-Squad-SDD",
+        "releaseType": "release"
+      }
+    ]
+  }
+}

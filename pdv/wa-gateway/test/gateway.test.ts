@@ -132,6 +132,7 @@ describe("configuração e utilidades", () => {
     const c = lerConfig({ GATEWAY_TOKEN: TOKEN, API_URL: "http://api:8000/" });
     assert.equal(c.apiUrl, "http://api:8000");
     assert.equal(c.porta, 3001);
+    assert.equal(c.host, "127.0.0.1"); // RT-18: só a própria máquina
   });
 
   it("compara token em tempo constante", () => {

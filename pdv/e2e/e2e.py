@@ -1,9 +1,19 @@
-"""E2E do painel: roda contra API e painel no ar. Variáveis: WEB_URL, API_URL, GATEWAY_TOKEN, SHOTS_DIR."""
-import os, time, uuid, httpx, re
+"""E2E do painel: roda contra o app no ar.
+
+Variáveis: PDV_DADOS (pasta de dados do app: lê instancia.json e segredos.json) ou WEB_URL, API_URL e
+GATEWAY_TOKEN; SHOTS_DIR para as capturas.
+"""
+import json, os, time, uuid, httpx, re
 from playwright.sync_api import sync_playwright, expect
 
-WEB=os.environ.get("WEB_URL","http://localhost:8080"); API=os.environ.get("API_URL","http://localhost:8000")
-TOKEN=os.environ["GATEWAY_TOKEN"]; SH=os.environ.get("SHOTS_DIR","e2e-shots"); os.makedirs(SH, exist_ok=True)
+if os.environ.get("PDV_DADOS"):
+    _inst=json.load(open(os.path.join(os.environ["PDV_DADOS"],"instancia.json"),encoding="utf-8"))
+    _seg=json.load(open(os.path.join(os.environ["PDV_DADOS"],"segredos.json"),encoding="utf-8"))
+    WEB=_inst["urlLocal"]; API=f"http://127.0.0.1:{_inst['portaApi']}"; TOKEN=_seg["gatewayToken"]
+else:
+    WEB=os.environ.get("WEB_URL","http://localhost:8080"); API=os.environ.get("API_URL","http://localhost:8000")
+    TOKEN=os.environ["GATEWAY_TOKEN"]
+SH=os.environ.get("SHOTS_DIR","e2e-shots"); os.makedirs(SH, exist_ok=True)
 email=f"dono{uuid.uuid4().hex[:6]}@sabor.com"
 
 def webhook(rid, texto, tel="5592991234567"):
@@ -15,8 +25,10 @@ def webhook(rid, texto, tel="5592991234567"):
 with sync_playwright() as p:
     b=p.chromium.launch()
     pg=b.new_page(viewport={"width":1280,"height":820})
-    pg.goto(WEB); pg.screenshot(path=f"{SH}/01-entrar.png")
-    pg.get_by_role("button", name="Primeiro acesso? Cadastre seu restaurante").click()
+    pg.goto(WEB); pg.wait_for_load_state("networkidle"); pg.screenshot(path=f"{SH}/01-entrar.png")
+    # No app, o primeiro uso já abre no cadastro (RF-21); no modo servidor, é preciso pedir
+    if not pg.get_by_role("heading", name="Cadastrar restaurante").is_visible():
+        pg.get_by_role("button", name="Primeiro acesso? Cadastre seu restaurante").click()
     pg.get_by_label("Nome do restaurante").fill("Sabor do Rio")
     pg.get_by_label("E-mail").fill(email); pg.get_by_label("Senha").fill("Forte#2026")
     pg.get_by_role("button", name="Cadastrar e entrar").click()

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>Redefinir senha do dono</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; padding: 22px 24px; font-family: "Segoe UI", system-ui, sans-serif;
+    background: #ffffff; color: #18211c; font-size: 14px;
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { margin: 0 0 16px; color: #4d5a52; line-height: 1.4; }
+  label { display: block; font-weight: 600; margin-bottom: 12px; }
+  input {
+    display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px 10px;
+    font: inherit; border: 1px solid #c9d3cb; border-radius: 6px; background: inherit; color: inherit;
+  }
+  input:focus { outline: 2px solid #1b6fd1; outline-offset: 1px; }
+  .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid #c9d3cb; background: transparent; color: inherit; cursor: pointer; }
+  button[type="submit"] { background: #173326; border-color: #173326; color: #fff; font-weight: 600; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  #mensagem { min-height: 1.4em; margin-top: 10px; }
+  #mensagem.erro { color: #b3261e; }
+  #mensagem.ok { color: #4e7d2e; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #18211c; color: #f1f4f1; }
+    p { color: #c9d3cb; }
+    input, button { border-color: #4d5a52; }
+    button[type="submit"] { background: #e2b019; border-color: #e2b019; color: #18211c; }
+    #mensagem.erro { color: #ff8a80; }
+    #mensagem.ok { color: #9cc77b; }
+  }
+</style>
+</head>
+<body>
+  <h1>Redefinir senha do dono</h1>
+  <p>Use o e-mail do dono cadastrado no PDV. Quem estiver com o painel aberto vai precisar entrar de novo.</p>
+  <form id="form" autocomplete="off">
+    <label>E-mail do dono <input id="email" type="email" required autofocus></label>
+    <label>Senha nova <input id="senha" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
+    <label>Repita a senha nova <input id="repetir" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
+    <div id="mensagem" role="status"></div>
+    <div class="acoes">
+      <button type="button" id="cancelar">Fechar</button>
+      <button type="submit" id="salvar">Salvar senha nova</button>
+    </div>
+  </form>
+  <script src="senha.js"></script>
+</body>
+</html>

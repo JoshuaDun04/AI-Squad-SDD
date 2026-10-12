@@ -9,3 +9,8 @@ dist/
 pdv/.env
 pdv/wa-gateway/data/
 pdv/backups/
+pdv/desktop/recursos/
+pdv/desktop/dist-app/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

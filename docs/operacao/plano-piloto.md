@@ -1,7 +1,7 @@
-# Plano do piloto em campo — R1
+# Plano do piloto em campo — R1 no app Windows
 
 - Objetivo: validar no uso real as dores DN-01 (pedido perdido ou errado) e DN-02 (cozinha sem fila), com custo de entrada mínimo (DN-06)
-- Pré-requisito: R1 implantada pelo [roteiro da VPS](implantacao-vps.md), com `./deploy/pdv.sh verificar` terminando em `Tudo certo.`
+- Pré-requisito: app instalado no computador do restaurante pelo [guia de instalação](instalacao-windows.md) (DEC-11), com o ícone da bandeja mostrando "Sistema: funcionando" e "WhatsApp (robô): funcionando"
 - Fases: **0 — ensaio interno** (1 a 2 dias, sem cliente real) → **1 — piloto assistido** (2 semanas, 1 restaurante) → **decisão** (seguir, ajustar ou parar)
 
 ## Fase 0 — Ensaio interno
@@ -21,12 +21,14 @@ Você faz o papel do restaurante e do cliente, com dois celulares: o do restaura
 | 9 | Carrinho abandonado | BDD-ROB-06 | Monte um carrinho, espere 31 min, mande "3" | Aviso de carrinho expirado e menu do início |
 | 10 | Entradas inválidas | BDD-ROB-04, BDD-ROB-05 | Envie "dois", "0", "21", figurinha, áudio | Robô pede de novo, sem travar |
 | 11 | Dois clientes ao mesmo tempo | ISO e REV-01 | Dois celulares cliente pedindo juntos | Pedidos separados, numeração sem repetir |
-| 12 | Reinício do servidor | ADR-0002, contatos LID | `docker compose -f docker-compose.yml -f docker-compose.prod.yml restart wa-gateway api` no meio de um pedido aberto | Sessão continua conectada; o pedido segue; avisos chegam |
-| 13 | Desconectar e reconectar | BDD-WA-02 | No celular, encerre o aparelho conectado | Verificação acusa; novo QR reconecta |
-| 14 | Backup e restauração | — | `./deploy/pdv.sh backup`; restaure num ensaio | Dados e sessão de volta |
-| 15 | Logs sem dados pessoais | BDD-LGPD-02 | Depois dos testes, `./deploy/pdv.sh verificar` | "logs sem telefone completo" |
+| 12 | Reinício do computador | ADR-0002, contatos LID, RF-22 | Com um pedido aberto no meio da conversa, reinicie o Windows | O app volta sozinho na bandeja; sessão do WhatsApp continua; o pedido segue; avisos chegam |
+| 13 | Desconectar e reconectar | BDD-WA-02, RF-26 | No celular, encerre o aparelho conectado | Notificação do Windows em até 1 min; novo QR reconecta |
+| 14 | Backup e restauração | BDD-BKP-01, RF-24 | Ícone → Fazer backup agora; faça um pedido; Restaurar backup… com o arquivo de antes | Pedido feito depois do backup some; o resto volta; robô segue conectado |
+| 15 | Logs sem dados pessoais | BDD-LGPD-02 | Depois dos testes, abra a pasta `logs` (ícone → Abrir pasta de dados) e procure o telefone e o endereço do teste | Nada encontrado |
+| 16 | Cozinha pela rede | BDD-PNL-01, RF-23 | No tablet, abra o endereço da cozinha (Equipe ou ícone da bandeja) e deixe a fila aberta durante os testes 2 a 6 | Tickets chegam no tablet sem recarregar |
+| 17 | Fechar a janela | BDD-APP-01, RF-22 | Feche a janela do PDV no X e faça um pedido | Pedido chega na cozinha; o app segue na bandeja |
 
-Anote cada teste como **ok**, **falhou** ou **estranho**, com hora e um print se ajudar. Qualquer **falhou** nos testes 2, 5, 11, 12 ou 15 bloqueia a Fase 1.
+Anote cada teste como **ok**, **falhou** ou **estranho**, com hora e um print se ajudar. Qualquer **falhou** nos testes 2, 5, 11, 12, 15 ou 16 bloqueia a Fase 1.
 
 ## Fase 1 — Piloto assistido
 
@@ -36,16 +38,18 @@ Anote cada teste como **ok**, **falhou** ou **estranho**, com hora e um print se
 - [ ] Número dedicado do restaurante conectado (ou migração do número atual, ciente do risco RSK-01)
 - [ ] Cardápio completo com preços conferidos pelo dono
 - [ ] Horários reais de funcionamento
-- [ ] Tela da cozinha: tablet, notebook ou TV com navegador, logada com o usuário "cozinha"
+- [ ] Tela da cozinha: tablet, notebook ou TV com navegador no mesmo Wi-Fi, aberta no endereço da cozinha e logada com o usuário "cozinha"; rede do computador como Privada
+- [ ] Computador sem suspensão na tomada e com o app abrindo junto com o Windows (reinicie uma vez para conferir)
+- [ ] Cópia semanal da pasta de backups combinada com o dono (pendrive ou nuvem dele)
 - [ ] Atendente treinado em: detalhe do pedido, cancelamento com motivo, "Entregue"
 - [ ] Mensagem para os clientes avisando que os pedidos passam a ser por menu numerado
 - [ ] Clientes informados de que o telefone e o endereço servem só para o pedido (RN-10, LGPD)
-- [ ] Alerta do ntfy chegando no seu celular e no do dono
+- [ ] Dono sabe reconhecer a notificação de WhatsApp desconectado e ler o QR de novo
 - [ ] Plano B combinado: se o robô parar, o restaurante volta a anotar à mão e avisa você
 
 ### Durante (todo dia, 10 minutos)
 
-1. `./deploy/pdv.sh relatorio 1` e preencher o registro diário abaixo
+1. Painel → **Relatório** (último dia) e preencher o registro diário abaixo
 2. Perguntar ao dono: algum pedido chegou fora do robô? Algum saiu errado? Alguma reclamação?
 3. Conferir o painel de pedidos do dia contra o que a cozinha produziu
 
@@ -60,8 +64,8 @@ Os alvos são hipóteses da squad para o PM confirmar antes do início.
 | Pedidos com erro de item, quantidade ou valor | conversa com o dono | ≤ 2% |
 | Tempo da confirmação até "Em preparo" | relatório (mediana) | ≤ 5 min |
 | Cancelamentos por falha do sistema | relatório (motivos) | 0 |
-| Horas com o WhatsApp desconectado em horário de funcionamento | alertas do ntfy | ≤ 1 h na semana |
-| Telefone completo em log | verificação | nunca |
+| Horas com o WhatsApp desconectado em horário de funcionamento | notificações anotadas pelo dono + `logs/app.log` | ≤ 1 h na semana |
+| Telefone completo em log | busca na pasta `logs` | nunca |
 
 ### Registro diário
 
@@ -77,7 +81,7 @@ Os alvos são hipóteses da squad para o PM confirmar antes do início.
 
 ## Decisão ao fim das duas semanas
 
-Leve à squad: o registro diário, `./deploy/pdv.sh relatorio 14` e os comentários do dono. A decisão é uma de três:
+Leve à squad: o registro diário, o Relatório do painel com 14 dias e os comentários do dono. A decisão é uma de três:
 - **Seguir:** ampliar para mais restaurantes e abrir o Gate 3 da R2.
 - **Ajustar:** corrigir o que o piloto mostrou e repetir uma semana.
 - **Parar:** registrar o motivo como DEC.
