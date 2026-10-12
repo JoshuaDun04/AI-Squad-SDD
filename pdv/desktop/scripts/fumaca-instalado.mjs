@@ -3,7 +3,7 @@
 // API e o robô não ficaram órfãos (RT-19).
 //
 // Uso: node scripts/fumaca-instalado.mjs --exe "<...>\PDV Restaurantes.exe" --dados "<pasta>" [-- comando args...]
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -48,7 +48,14 @@ function filhosDoApp() {
 function mostrarLogs() {
   for (const nome of ["app.log", "api.log", "whatsapp.log"]) {
     const arq = path.join(values.dados, "logs", nome);
-    if (fs.existsSync(arq)) console.log(`----- ${nome}\n${fs.readFileSync(arq, "utf8").slice(-4000)}`);
+    if (!fs.existsSync(arq)) continue;
+    const fim = fs.readFileSync(arq, "utf8").slice(-3000);
+    console.log(`----- ${nome}\n${fim}`);
+    // No CI, vira anotação do job: dá para ler a causa sem baixar o log inteiro
+    if (process.env.GITHUB_ACTIONS) {
+      const escapado = fim.replace(/%/g, "%25").replace(/\r/g, "").replace(/\n/g, "%0A");
+      console.log(`::warning title=${nome}::${escapado}`);
+    }
   }
 }
 
@@ -83,7 +90,10 @@ try {
   if (positionals.length) {
     const [cmd, ...args] = positionals;
     console.log(`$ ${positionals.join(" ")}`);
-    execFileSync(cmd, args, { stdio: "inherit", env: { ...process.env, PDV_DADOS: values.dados } });
+    const r = spawnSync(cmd, args, { stdio: ["ignore", "inherit", "pipe"], env: { ...process.env, PDV_DADOS: values.dados } });
+    const erros = String(r.stderr || "");
+    process.stderr.write(erros);
+    if (r.status !== 0) throw new Error(`${cmd} saiu com código ${r.status}:\n${erros.slice(-2500)}`);
   }
 } catch (erro) {
   falha = erro;
@@ -112,6 +122,7 @@ if (!falha && restantes.length) falha = new Error(`processos órfãos depois de 
 if (falha) {
   mostrarLogs();
   console.error(`FALHOU: ${falha.message}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=Fumaça do app instalado::${String(falha.message).replace(/%/g, "%25").replace(/\r?\n/g, "%0A")}`);
   process.exit(1);
 }
 console.log("fumaça ok");
