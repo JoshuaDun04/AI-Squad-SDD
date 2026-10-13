@@ -45,20 +45,14 @@
     "asar": true,
     "extraResources": [
       {
-        "from": "recursos/api",
-        "to": "api"
-      },
-      {
-        "from": "recursos/python",
-        "to": "python"
-      },
-      {
-        "from": "recursos/wa-gateway",
-        "to": "wa-gateway"
-      },
-      {
-        "from": "recursos/web",
-        "to": "web"
+        "from": "recursos",
+        "to": ".",
+        "filter": [
+          "api/**/*",
+          "python/**/*",
+          "wa-gateway/**/*",
+          "web/**/*"
+        ]
       }
     ],
     "win": {
